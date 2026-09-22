@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<!--
+  tutor.html
+  AH Student Hub — Tutor Portal shell (Development Plan Section 7). Ported
+  from Tutor.html.
+
+  COMPLETED BEYOND THE ORIGINAL: the supplied Tutor.html had "Set Up
+  Exams" and "Start New Lecture" as placeholder ("Coming soon") views, and
+  had no "Grade Student" / Results view at all (Section 7.4, Phase 10).
+  All three are now real, wired to backend/app/blueprints/tutor.py's
+  /lectures, /exams, and /results/save endpoints — see
+  docs/ARCHITECTURE_AND_DECISIONS.md, "Phases completed beyond the
+  supplied project."
+-->
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tutor Portal — AH Student Hub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body class="bg-gray-100">
+
+  <div id="loadingScreen" class="min-h-screen flex flex-col items-center justify-center gap-4 px-4">
+    <div id="loadingSpinnerState">
+      <div class="loader border-4 border-gray-300 rounded-full w-12 h-12 mx-auto"></div>
+      <p class="text-gray-500 text-sm font-bold uppercase tracking-wide mt-4">Loading your portal...</p>
+    </div>
+    <div id="loadingErrorState" class="hidden text-center max-w-sm">
+      <div class="text-4xl mb-3">⚠️</div>
+      <p class="font-bold text-gray-800 mb-1">This is taking longer than expected</p>
+      <p id="loadingErrorMessage" class="text-sm text-gray-500 mb-5">We couldn't load your portal right now.</p>
+      <div class="flex flex-col sm:flex-row gap-3 justify-center">
+        <button type="button" onclick="retryLoadDashboard()" class="theme-bg-accent text-white font-bold py-2 px-6 rounded-lg uppercase tracking-wide text-sm">Try Again</button>
+        <a href="staff-login.html" class="border border-gray-300 text-gray-700 font-bold py-2 px-6 rounded-lg uppercase tracking-wide text-sm inline-block">Back to Login</a>
+      </div>
+    </div>
+    <div id="notLoggedInState" class="hidden text-center max-w-sm">
+      <div class="text-4xl mb-3">🔒</div>
+      <p class="font-bold text-gray-800 mb-1">You're not logged in</p>
+      <p class="text-sm text-gray-500 mb-5">Please log in to view your Tutor Portal.</p>
+      <a href="staff-login.html" class="theme-bg-accent text-white font-bold py-3 px-6 rounded-lg uppercase tracking-wide shadow-lg inline-block">Go to Login</a>
+    </div>
+  </div>
+
+  <div id="portalRoot" class="hidden">
+    <div class="flex min-h-screen">
+      <aside id="app-sidebar" class="w-64 bg-white border-r border-gray-200 flex-col fixed inset-y-0 left-0 hidden md:flex z-20"></aside>
+
+      <div class="flex-1 flex flex-col md:ml-64">
+        <div id="app-header"></div>
+
+        <main class="flex-1 p-4 md:p-8">
+
+          <!-- ============================ HOME / DASHBOARD ============================ -->
+          <div id="view-home" class="view">
+            <div id="notAssignedBanner" class="hidden bg-orange-50 border border-orange-200 rounded-xl p-6 text-center mb-6">
+              <h2 class="text-lg font-black text-gray-800 mb-2">No Students Assigned Yet</h2>
+              <p class="text-gray-600 text-sm max-w-md mx-auto">You're registered for <strong id="notAssignedCourse"></strong>, but no students have enrolled in that
+                course/category yet. Your roster and dashboard will populate automatically once they do.</p>
+            </div>
+
+            <div id="dashboardSection" class="hidden">
+              <h2 class="text-xl font-black text-gray-800 mb-1 uppercase tracking-wide">Dashboard</h2>
+              <p class="text-sm text-gray-500 mb-6">Course: <strong id="courseLabel"></strong></p>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-8" id="kpiCardsGrid"></div>
+
+              <h3 class="text-lg font-black text-gray-800 mb-4 uppercase tracking-wide">Your Roster</h3>
+              <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                <div style="max-height: 50vh; overflow-y: auto;">
+                  <table class="w-full text-left text-sm">
+                    <thead>
+                      <tr>
+                        <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs bg-gray-800 text-white sticky top-0">Full Name</th>
+                        <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs bg-gray-800 text-white sticky top-0">Student ID</th>
+                        <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs bg-gray-800 text-white sticky top-0">Email</th>
+                        <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs bg-gray-800 text-white sticky top-0">Phone</th>
+                        <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs bg-gray-800 text-white sticky top-0">Payment</th>
+                        <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs bg-gray-800 text-white sticky top-0">Total Score</th>
+                      </tr>
+                    </thead>
+                    <tbody id="rosterTableBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ============================ ASSIGNMENTS ============================ -->
+          <div id="view-assignments" class="view hidden">
+            <h2 class="text-xl font-black text-gray-800 mb-4 uppercase tracking-wide">Assignments</h2>
+
+            <div class="bg-white border border-gray-200 rounded-xl p-5 mb-6 shadow-sm">
+              <h3 class="font-bold text-gray-700 mb-3 uppercase text-sm tracking-wide">New Assignment</h3>
+              <div id="createAssignError" class="hidden bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-3"></div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                <input type="text" id="newAssignTitle" placeholder="Title" class="input-light p-3 rounded-lg w-full">
+                <input type="date" id="newAssignDueDate" class="input-light p-3 rounded-lg w-full text-gray-500" onfocus="this.style.color='#111827'">
+                <input type="number" id="newAssignMaxScore" placeholder="Max Score (optional)" min="0" class="input-light p-3 rounded-lg w-full">
+                <input type="url" id="newAssignAttachment" placeholder="Attachment URL (optional)" class="input-light p-3 rounded-lg w-full">
+              </div>
+              <textarea id="newAssignDescription" placeholder="Description / instructions" class="input-light p-3 rounded-lg w-full mb-3" rows="3"></textarea>
+              <button type="button" id="createAssignBtn" onclick="createAssignmentClick()" class="theme-bg-accent hover:bg-orange-600 text-white font-bold py-2 px-6 rounded-lg text-sm uppercase tracking-wide">Create Assignment</button>
+            </div>
+
+            <h3 class="font-bold text-gray-700 mb-3 uppercase text-sm tracking-wide">Your Assignments</h3>
+            <p id="assignmentsEmpty" class="hidden text-sm text-gray-500 italic">No assignments created yet.</p>
+            <div id="assignmentsManageList" class="space-y-3"></div>
+          </div>
+
+          <!-- ============================ SUBMISSIONS ============================ -->
+          <div id="view-submissions" class="view hidden">
+            <h2 class="text-xl font-black text-gray-800 mb-4 uppercase tracking-wide">Submissions</h2>
+
+            <div class="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm">
+              <select id="submissionsAssignmentFilter" onchange="loadSubmissions()" class="input-light p-3 rounded-lg w-full md:w-96">
+                <option value="">All Assignments</option>
+              </select>
+            </div>
+
+            <p id="submissionsEmpty" class="hidden text-sm text-gray-500 italic">No submissions yet.</p>
+            <div id="submissionsList" class="space-y-3"></div>
+          </div>
+
+          <!-- ============================ SET UP EXAMS ============================ -->
+          <div id="view-exams" class="view hidden">
+            <h2 class="text-xl font-black text-gray-800 mb-4 uppercase tracking-wide">Set Up Exams</h2>
+
+            <div class="bg-white border border-gray-200 rounded-xl p-5 mb-6 shadow-sm">
+              <h3 class="font-bold text-gray-700 mb-3 uppercase text-sm tracking-wide">New Exam</h3>
+              <div id="createExamError" class="hidden bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-3"></div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                <input type="text" id="newExamTitle" placeholder="Exam Title" class="input-light p-3 rounded-lg w-full">
+                <input type="date" id="newExamDueDate" class="input-light p-3 rounded-lg w-full text-gray-500" onfocus="this.style.color='#111827'">
+              </div>
+              <textarea id="newExamInstructions" placeholder="Instructions for students" class="input-light p-3 rounded-lg w-full mb-3" rows="2"></textarea>
+              <textarea id="newExamQuestions" placeholder="Questions (one per line)" class="input-light p-3 rounded-lg w-full mb-3" rows="4"></textarea>
+              <button type="button" id="createExamBtn" onclick="createExamClick()" class="theme-bg-accent hover:bg-orange-600 text-white font-bold py-2 px-6 rounded-lg text-sm uppercase tracking-wide">Send to My Class</button>
+            </div>
+
+            <h3 class="font-bold text-gray-700 mb-3 uppercase text-sm tracking-wide">Exams Sent</h3>
+            <p id="examsEmpty" class="hidden text-sm text-gray-500 italic">No exams sent yet.</p>
+            <div id="examsList" class="space-y-3"></div>
+          </div>
+
+          <!-- ============================ START NEW LECTURE ============================ -->
+          <div id="view-lecture" class="view hidden">
+            <h2 class="text-xl font-black text-gray-800 mb-4 uppercase tracking-wide">Start New Lecture</h2>
+
+            <div class="bg-white border border-gray-200 rounded-xl p-5 mb-6 shadow-sm">
+              <h3 class="font-bold text-gray-700 mb-3 uppercase text-sm tracking-wide">New Lecture</h3>
+              <div id="createLectureError" class="hidden bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-3"></div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                <input type="text" id="newLectureTitle" placeholder="Lecture Title" class="input-light p-3 rounded-lg w-full">
+                <input type="date" id="newLectureDate" class="input-light p-3 rounded-lg w-full text-gray-500" onfocus="this.style.color='#111827'">
+              </div>
+              <textarea id="newLectureDescription" placeholder="What this lecture covers" class="input-light p-3 rounded-lg w-full mb-3" rows="3"></textarea>
+              <label class="block font-bold mb-2 text-gray-700 text-sm">Lecture Material (optional)</label>
+              <input type="file" id="newLectureMaterial" class="w-full text-gray-600 text-sm mb-3 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100">
+              <button type="button" id="createLectureBtn" onclick="createLectureClick()" class="theme-bg-accent hover:bg-orange-600 text-white font-bold py-2 px-6 rounded-lg text-sm uppercase tracking-wide">Publish Lecture</button>
+            </div>
+
+            <h3 class="font-bold text-gray-700 mb-3 uppercase text-sm tracking-wide">Published Lectures</h3>
+            <p id="lecturesEmpty" class="hidden text-sm text-gray-500 italic">No lectures published yet.</p>
+            <div id="lecturesList" class="space-y-3"></div>
+          </div>
+
+          <!-- ============================ GRADE STUDENT / RESULTS ============================ -->
+          <div id="view-results" class="view hidden">
+            <h2 class="text-xl font-black text-gray-800 mb-4 uppercase tracking-wide">Grade Student</h2>
+            <p class="text-sm text-gray-500 mb-6">CA + Exams (Objectives) + Exams (Practical) = Total. The exam status band is calculated automatically once you save.</p>
+
+            <div class="bg-white border border-gray-200 rounded-xl p-5 mb-6 shadow-sm">
+              <div id="saveResultError" class="hidden bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-3"></div>
+              <div id="saveResultSuccess" class="hidden bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3 mb-3"></div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                <select id="resultStudentSelect" class="input-light p-3 rounded-lg w-full md:col-span-2">
+                  <option value="">Choose a student from your roster</option>
+                </select>
+                <input type="number" id="resultCa" placeholder="CA score" min="0" class="input-light p-3 rounded-lg w-full">
+                <input type="number" id="resultExamObjectives" placeholder="Exams (Objectives)" min="0" class="input-light p-3 rounded-lg w-full">
+                <input type="number" id="resultExamPractical" placeholder="Exams (Practical)" min="0" class="input-light p-3 rounded-lg w-full">
+              </div>
+              <button type="button" id="saveResultBtn" onclick="saveResultClick()" class="theme-bg-accent hover:bg-orange-600 text-white font-bold py-2 px-6 rounded-lg text-sm uppercase tracking-wide">Save Result</button>
+            </div>
+          </div>
+
+        </main>
+
+        <div id="app-footer"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/tutor.js"></script>
+
+</body>
+
+</html>

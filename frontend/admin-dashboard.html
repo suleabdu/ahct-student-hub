@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<!--
+  admin-dashboard.html
+  AH Student Hub — Admin Dashboard. Ported from AdminDashboard.html.
+
+  EXTENDED with a "Tutors" nav item, wired to backend/app/blueprints/
+  admin.py's /tutors and /tutors/create — a convenience layer over the
+  original design (admin staff editing the Tutors sheet directly still
+  works unchanged; see admin.py's module docstring).
+-->
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard — AH Student Hub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    /* Table-specific styling not worth adding to the shared stylesheet —
+       used only on this page. */
+    #adminTableScroll { max-height: 60vh; overflow-y: auto; }
+    #adminTableScroll table { border-collapse: separate; border-spacing: 0; }
+    #adminTableScroll thead th { position: sticky; top: 0; background: #1f2937; color: #fff; z-index: 5; }
+  </style>
+</head>
+
+<body class="bg-gray-100">
+
+  <div id="loadingScreen" class="min-h-screen flex flex-col items-center justify-center gap-4 px-4">
+    <div id="loadingSpinnerState">
+      <div class="loader border-4 border-gray-300 rounded-full w-12 h-12 mx-auto"></div>
+      <p class="text-gray-500 text-sm font-bold uppercase tracking-wide mt-4">Loading dashboard...</p>
+    </div>
+    <div id="loadingErrorState" class="hidden text-center max-w-sm">
+      <div class="text-4xl mb-3">⚠️</div>
+      <p class="font-bold text-gray-800 mb-1">This is taking longer than expected</p>
+      <p id="loadingErrorMessage" class="text-sm text-gray-500 mb-5">We couldn't load the dashboard right now.</p>
+      <div class="flex flex-col sm:flex-row gap-3 justify-center">
+        <button type="button" onclick="retryLoadDashboard()" class="theme-bg-accent text-white font-bold py-2 px-6 rounded-lg uppercase tracking-wide text-sm">Try Again</button>
+        <a href="staff-login.html" class="border border-gray-300 text-gray-700 font-bold py-2 px-6 rounded-lg uppercase tracking-wide text-sm inline-block">Back to Login</a>
+      </div>
+    </div>
+    <div id="notLoggedInState" class="hidden text-center max-w-sm">
+      <div class="text-4xl mb-3">🔒</div>
+      <p class="font-bold text-gray-800 mb-1">You're not logged in</p>
+      <p class="text-sm text-gray-500 mb-5">Please log in to view the Admin Dashboard.</p>
+      <a href="staff-login.html" class="theme-bg-accent text-white font-bold py-3 px-6 rounded-lg uppercase tracking-wide shadow-lg inline-block">Go to Login</a>
+    </div>
+  </div>
+
+  <div id="dashboardRoot" class="hidden">
+    <div class="flex min-h-screen">
+      <aside id="app-sidebar" class="w-64 bg-white border-r border-gray-200 flex-col fixed inset-y-0 left-0 hidden md:flex z-20"></aside>
+
+      <div class="flex-1 flex flex-col md:ml-64">
+        <div id="app-header"></div>
+
+        <main class="flex-1 p-4 md:p-8">
+
+          <div id="view-dashboard" class="view">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8" id="summaryCardsGrid"></div>
+
+            <div class="bg-white border border-gray-200 rounded-xl p-5 mb-4 shadow-sm">
+              <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <input type="text" id="filterSearch" placeholder="Search name, Student ID, or email..." class="input-light p-3 rounded-lg w-full">
+                <select id="filterCourse" class="input-light p-3 rounded-lg w-full">
+                  <option value="">All Courses</option>
+                </select>
+                <select id="filterCategory" class="input-light p-3 rounded-lg w-full">
+                  <option value="">All Categories</option>
+                </select>
+                <select id="filterStatus" class="input-light p-3 rounded-lg w-full">
+                  <option value="">All Admission Statuses</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+              <div id="adminTableScroll">
+                <table class="w-full text-left text-sm">
+                  <thead>
+                    <tr>
+                      <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs"></th>
+                      <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs">Full Name</th>
+                      <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs">Student ID</th>
+                      <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs">DOB</th>
+                      <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs">Gender</th>
+                      <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs">Email</th>
+                      <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs">Intake Mode</th>
+                      <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs">Total Courses</th>
+                      <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs">Course Fee</th>
+                      <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs">Learning Mode</th>
+                      <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs">Payment Status</th>
+                      <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs">Admission Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="adminTableBody"></tbody>
+                </table>
+              </div>
+              <p id="adminTableEmpty" class="hidden text-center text-gray-400 py-10">No registrations match these filters.</p>
+            </div>
+          </div>
+
+          <!-- ============================ TUTORS ============================ -->
+          <div id="view-tutors" class="view hidden">
+            <h2 class="text-xl font-black text-gray-800 mb-4 uppercase tracking-wide">Tutors</h2>
+
+            <div class="bg-white border border-gray-200 rounded-xl p-5 mb-6 shadow-sm">
+              <h3 class="font-bold text-gray-700 mb-3 uppercase text-sm tracking-wide">Add Tutor</h3>
+              <p class="text-xs text-gray-500 mb-3">The tutor's email is their login ID — they'll receive the default password and set their own on first login.</p>
+              <div id="addTutorError" class="hidden bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-3"></div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                <input type="text" id="newTutorName" placeholder="Full Name (optional — tutor can set this)" class="input-light p-3 rounded-lg w-full">
+                <input type="email" id="newTutorEmail" placeholder="Email (login ID)" class="input-light p-3 rounded-lg w-full">
+                <select id="newTutorCourse" class="input-light p-3 rounded-lg w-full">
+                  <option value="">Choose Course</option>
+                  <option value="Graphic Design">Graphic Design</option>
+                  <option value="Revit">Revit</option>
+                  <option value="Lumion">Lumion</option>
+                  <option value="AutoCAD">AutoCAD</option>
+                  <option value="SketchUP">SketchUP</option>
+                  <option value="ArchiCAD">ArchiCAD</option>
+                </select>
+                <select id="newTutorCategory" class="input-light p-3 rounded-lg w-full">
+                  <option value="">Choose Category</option>
+                  <option value="Beginner">Beginner</option>
+                  <option value="Intermediate">Intermediate</option>
+                  <option value="Professional">Professional</option>
+                  <option value="Full Package">Full Package</option>
+                </select>
+              </div>
+              <button type="button" id="addTutorBtn" onclick="addTutorClick()" class="theme-bg-accent hover:bg-orange-600 text-white font-bold py-2 px-6 rounded-lg text-sm uppercase tracking-wide">Add Tutor</button>
+            </div>
+
+            <h3 class="font-bold text-gray-700 mb-3 uppercase text-sm tracking-wide">Current Tutors</h3>
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+              <table class="w-full text-left text-sm">
+                <thead>
+                  <tr>
+                    <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs bg-gray-800 text-white">Name</th>
+                    <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs bg-gray-800 text-white">Email</th>
+                    <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs bg-gray-800 text-white">Course</th>
+                    <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs bg-gray-800 text-white">Category</th>
+                    <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs bg-gray-800 text-white">Tutor Code</th>
+                  </tr>
+                </thead>
+                <tbody id="tutorsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+        </main>
+
+        <div id="app-footer"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/admin.js"></script>
+
+</body>
+
+</html>

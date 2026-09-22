@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<!--
+  student-login.html
+  AH Student Hub — Student login. Ported from StudentLogin.html.
+
+  SIMPLIFICATION vs. the original: Apps Script served every page inside a
+  sandboxed IFRAME, which blocked script-triggered top-level navigation —
+  the original worked around this with a visible "Continue" link the
+  person had to click, and passed the session token through the URL. A
+  static Netlify page is NOT sandboxed in an iframe, so this port
+  navigates directly (window.location.href) once login succeeds, and
+  keeps the token in sessionStorage only (never the URL) — simpler and
+  slightly more secure. See docs/ARCHITECTURE_AND_DECISIONS.md.
+-->
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Login — AH Student Hub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+
+  <div id="app-wrapper" class="relative min-h-screen flex items-center justify-center bg-gray-900 py-10 px-4">
+    <div class="absolute inset-0 z-0 hero-bg">
+      <img src="https://lh3.googleusercontent.com/d/1j4e1Rx5igtD7_4GTuVhz7WlQ3lCyrF68" alt=""
+        class="w-full h-full object-cover opacity-30">
+    </div>
+
+    <div
+      class="main-container relative z-10 w-full max-w-md bg-gray-100/95 backdrop-blur-md rounded-xl shadow-2xl overflow-hidden border border-gray-300 p-8">
+
+      <div class="text-center mb-6">
+        <h1 class="text-2xl font-extrabold theme-accent tracking-wide">AH STUDENT HUB</h1>
+        <p class="text-gray-500 text-sm mt-1 uppercase tracking-wider">Student Portal Login</p>
+      </div>
+
+      <div id="loginPanel">
+        <div id="errorBox" class="hidden bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-4"></div>
+
+        <label class="block text-sm font-bold text-gray-700 mb-1">Student ID</label>
+        <input type="text" id="identifier" placeholder="AHCT....." class="input-light p-3 rounded-lg w-full mb-4">
+
+        <label class="block text-sm font-bold text-gray-700 mb-1">Password</label>
+        <input type="password" id="password" placeholder="Enter your password" class="input-light p-3 rounded-lg w-full mb-2">
+
+        <div class="text-right mb-5">
+          <a href="forgot-password.html?role=student" class="text-sm theme-accent font-semibold hover:underline">Forgot password?</a>
+        </div>
+
+        <button type="button" id="loginBtn" onclick="doLogin()"
+          class="theme-bg-accent hover:bg-orange-600 text-white font-bold py-3 rounded-lg w-full uppercase tracking-wide shadow-lg transition-all flex items-center justify-center gap-2">
+          <span id="loginBtnText">Log In</span>
+          <div id="loginLoader" class="loader hidden ease-linear rounded-full border-2 border-t-2 border-gray-200 h-4 w-4"></div>
+        </button>
+
+        <p class="text-center text-sm text-gray-500 mt-6">
+          New here? <a href="index.html" class="theme-accent font-semibold hover:underline">Start an application</a>
+        </p>
+        <p class="text-center text-xs text-gray-400 mt-3">
+          Tutor or Admin? <a href="staff-login.html" class="text-gray-500 font-semibold hover:underline">Staff login</a>
+        </p>
+      </div>
+
+      <div id="successPanel" class="hidden text-center">
+        <div class="text-5xl mb-4">✅</div>
+        <h2 class="text-xl font-bold text-gray-800 mb-2">Welcome, <span id="successName"></span>!</h2>
+        <p class="text-gray-600 mb-6">You're securely logged in.</p>
+        <a id="continueBtn" href="#"
+          class="theme-bg-accent hover:bg-orange-600 text-white font-bold py-3 px-8 rounded-lg uppercase tracking-wide shadow-lg inline-block transition-all">
+          Continue to Your Portal &rarr;
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script>
+    const ROLE_STUDENT = "student";
+
+    function showError(message) {
+      const box = document.getElementById('errorBox');
+      box.innerText = message;
+      box.classList.remove('hidden');
+    }
+    function clearError() {
+      document.getElementById('errorBox').classList.add('hidden');
+    }
+
+    function setLoading(isLoading) {
+      document.getElementById('loginBtn').disabled = isLoading;
+      document.getElementById('loginLoader').classList.toggle('hidden', !isLoading);
+      document.getElementById('loginBtnText').innerText = isLoading ? 'Checking...' : 'Log In';
+    }
+
+    function doLogin() {
+      clearError();
+      const identifier = document.getElementById('identifier').value.trim();
+      const password = document.getElementById('password').value;
+      if (!identifier || !password) { showError('Please enter your Student ID and password.'); return; }
+
+      setLoading(true);
+      Api.call('/api/auth/login', { identifier, password, role: ROLE_STUDENT }, function (res) {
+        setLoading(false);
+        if (res.mustChangePassword) {
+          sessionStorage.setItem('ahSetupActorId', res.actorId);
+          sessionStorage.setItem('ahSetupRole', res.role);
+          window.location.href = 'setup-password.html';
+          return;
+        }
+
+        sessionStorage.setItem('ahSessionToken', res.token);
+        sessionStorage.setItem('ahRole', res.role);
+        sessionStorage.setItem('ahDisplayName', res.displayName);
+        showContinue('portal.html', res.displayName, 'Continue to Your Portal \u2192');
+      }, function (err) {
+        setLoading(false);
+        showError(err.message || 'Something went wrong. Please try again.');
+      });
+    }
+
+    function showContinue(href, name, label) {
+      document.getElementById('loginPanel').classList.add('hidden');
+      document.getElementById('successName').innerText = name;
+      const btn = document.getElementById('continueBtn');
+      btn.href = href;
+      btn.innerText = label;
+      document.getElementById('successPanel').classList.remove('hidden');
+      // Auto-continue shortly after — the visible button remains a fallback.
+      setTimeout(function () { window.location.href = href; }, 900);
+    }
+  </script>
+
+</body>
+
+</html>
