@@ -8,4 +8,4 @@
    See docs/SETUP_GUIDE.md, Step 6.
    ============================================================================= */
 
-const API_BASE_URL = "http://localhost:5000";
+const API_BASE_URL = "http://ahstudenthub.netlify.app";  // <-- CHANGE THIS TO YOUR DEPLOYED BACKEND URL
