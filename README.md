@@ -51,15 +51,20 @@ backend/                  Flask API (deploy to Render)
   requirements.txt, Procfile, render.yaml, gunicorn_config.py, .env.example
 
 frontend/                 Static site (deploy to Netlify)
-  index.html               Public registration portal (4 stages + receipt)
+  index.html               Landing / home page (adapted from the AH Consult marketing site)
+  apply.html                Public Application Portal (4 stages + receipt) — was index.html
   student-login.html / staff-login.html
   setup-password.html / forgot-password.html / reset-password.html
   portal.html               Student Portal
   tutor.html                 Tutor Portal
-  admin-dashboard.html        Admin Dashboard
+  admin-dashboard.html        Admin Dashboard (registrations, Tutors, Intake Modes)
   js/                        One file per page/concern — api.js is the fetch()
-                              wrapper every page uses instead of google.script.run
-  css/styles.css             Shared visual identity (ported from Styles.html)
+                              wrapper every page uses instead of google.script.run;
+                              components.js renders the shared sidebar/header,
+                              including the mobile drawer nav
+  css/styles.css             Shared visual identity for the app pages (ported from
+                              Styles.html) — index.html keeps its own separate
+                              design system, matching the marketing site it's from
 
 setup/
   get_refresh_token.py      Run ONCE, locally, to authorize your Google account
@@ -83,6 +88,18 @@ docs/
   System** and **Examination System** — are now real, plus a proper
   **Grade Student / Results** flow and automatic **Leaderboard**
   recalculation.
+- **Tutor assignment is now explicit and admin-controlled** rather than
+  automatic — see Section 14 of the architecture doc.
+- **A new landing/home page** (`index.html`) now fronts the app,
+  adapted from AH Consult Ltd's marketing site, linking out to Apply /
+  Student Login / Staff Login — the registration form itself moved to
+  `apply.html`. See Section 15.
+- **A critical deadlock bug was found and fixed** — new registrations
+  could hang forever at "Submitting..." without ever writing to the
+  Registrations sheet. See Section 13.
+- **All three dashboards now have real mobile navigation** (a slide-in
+  drawer) instead of the sidebar simply vanishing on phone-width
+  screens. See Section 16.
 - Everything else — the registration flow, admissions, assignments,
   submissions, dashboards, and the visual design — was ported as
   faithfully as possible; the app should look and behave like the

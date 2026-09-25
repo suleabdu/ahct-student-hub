@@ -65,7 +65,7 @@ def get_tutor_dashboard():
     if err:
         return err
 
-    enrolled = ext.data_service.get_registration_ids_for_course(tutor["Course"], tutor["Category"])
+    enrolled = ext.data_service.get_registration_ids_assigned_to_tutor(tutor.get("Email"))
     if not enrolled:
         return jsonify(
             success=True, assigned=False, tutorName=tutor.get("TutorName") or tutor.get("Email"),
@@ -319,8 +319,8 @@ def save_result():
     if not reg_record:
         return jsonify(success=False, error="Student not found."), 404
 
-    # Ownership: the student must actually be on this tutor's roster.
-    enrolled = ext.data_service.get_registration_ids_for_course(tutor["Course"], tutor["Category"])
+    # Ownership: the student must actually be assigned to this tutor.
+    enrolled = ext.data_service.get_registration_ids_assigned_to_tutor(tutor.get("Email"))
     if reg_id not in enrolled:
         return jsonify(success=False, error="You can only record results for your own students."), 403
 

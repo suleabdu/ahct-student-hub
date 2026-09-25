@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<!--
+  apply.html
+  AH Student Hub — Public Application Portal (Development Plan Section 5)
+
+  Ported from the original Apps Script project's Index.html, which
+  assembled this page server-side from `<?!= include('Stage1_Intake') ?>`
+  etc. Static hosting (Netlify) has no server-side include, so all four
+  stages (Intake / Application / Payment / Receipt) are inlined directly
+  below in the same order Index.html included them — the markup itself is
+  otherwise unchanged from Stage1_Intake.html, Stage2_Application.html,
+  Stage3_Payment.html, and RegistrationReceipt.html.
+
+  Where the original injected server config via a JSON.stringify
+  scriptlet, this page instead fetches GET /api/public/config once on
+  load and only then boots the stage scripts — see the bootstrap script
+  block near the end of the body.
+
+  RENAMED from index.html so index.html could become the marketing
+  landing page (frontend/index.html) — this page is now reached via its
+  "Apply Now" buttons. A visit can optionally arrive with ?course=...
+  &category=... (the landing page's Programs section links this way) to
+  pre-select Stage 2's course and category — see the bootstrap script.
+-->
+<html lang="en">
+
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AH Student Hub Registration</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+
+  <!-- HERO SECTION BACKGROUND -->
+  <div id="app-wrapper" class="relative min-h-screen flex items-center justify-center bg-gray-900 py-10 px-4 md:px-8">
+    <div class="absolute inset-0 z-0 hero-bg">
+      <img src="https://lh3.googleusercontent.com/d/1j4e1Rx5igtD7_4GTuVhz7WlQ3lCyrF68" alt="Hero Background"
+        class="w-full h-full object-cover opacity-30">
+    </div>
+
+    <!-- FORM CONTAINER -->
+    <div
+      class="main-container relative z-10 w-full max-w-5xl bg-gray-100/95 backdrop-blur-md rounded-xl shadow-2xl overflow-hidden border border-gray-300">
+
+      <!-- Main App Header -->
+      <div id="main-app-header" class="bg-gray-200 border-b border-gray-300 p-6 shadow-sm">
+        <div class="flex justify-between items-center mb-3 print-hide">
+          <a href="index.html" class="text-xs font-bold text-gray-500 hover:text-orange-600 flex items-center gap-1">&larr; Back to Home</a>
+          <div class="flex items-center gap-3 text-xs font-bold">
+            <a href="student-login.html" class="text-gray-500 hover:text-orange-600">Student Login</a>
+            <span class="text-gray-300">|</span>
+            <a href="staff-login.html" class="text-gray-500 hover:text-orange-600">Staff Login</a>
+          </div>
+        </div>
+        <div class="flex flex-col items-center justify-center mb-2">
+          <div class="flex items-center space-x-4 mb-1">
+            <img src="https://lh3.googleusercontent.com/d/1Qp_nbC6oekgdzjJqGBHwHw125t1ABYUf" alt="AH Logo"
+              class="h-14 w-auto object-contain drop-shadow-md">
+            <h1 class="text-3xl uppercase tracking-wide">
+              <span class="font-extrabold text-black">AH STUDENT</span>
+              <span class="font-extrabold text-orange-600">HUB</span>
+            </h1>
+          </div>
+          <h2 id="formIntakeHeader" class="text-lg md:text-xl font-black text-gray-900 tracking-widest uppercase mt-1">
+            SELECT AN INTAKE MODE BELOW</h2>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="flex justify-between text-sm font-bold px-8 text-gray-500 max-w-lg mx-auto mt-4">
+          <span id="prog-0" class="text-black">1. Intake</span>
+          <span id="prog-1">2. Application</span>
+          <span id="prog-2">3. Payment</span>
+        </div>
+        <div class="max-w-lg mx-auto bg-gray-300 h-2 mt-2 rounded">
+          <div id="progress-bar" class="theme-bg-accent h-2 rounded w-1/3 transition-all duration-500"></div>
+        </div>
+      </div>
+
+      <div class="p-8 print-shadow-none">
+
+        <!-- ================= STAGE 1 — INTAKE MODE ================= -->
+        <div id="page-0" class="text-center py-6">
+          <h2 class="text-2xl md:text-3xl font-extrabold mb-3 theme-accent uppercase tracking-wide">Choose Your Intake</h2>
+          <p class="text-gray-600 mb-10 max-w-lg mx-auto">Select the intake you're applying for. This determines your class
+            start date and will be used on all your registration documents and emails.</p>
+
+          <div id="allIntakesClosedMessage"
+            class="hidden bg-orange-50 border border-orange-200 rounded-xl p-8 max-w-md mx-auto mb-10">
+            <div class="text-4xl mb-3">&#128197;</div>
+            <p class="font-bold text-gray-800 mb-1">Applications Are Currently Closed</p>
+            <p class="text-sm text-gray-500">Please check back later, or contact AH Consult Ltd for the next available intake.
+            </p>
+          </div>
+
+          <div id="intakeCardGroup" class="grid grid-cols-1 sm:grid-cols-3 gap-5 max-w-3xl mx-auto mb-10"></div>
+
+          <input type="hidden" id="intakeMode" value="">
+
+          <button type="button" id="intakeContinueBtn" onclick="proceedFromIntake()" disabled
+            class="theme-bg-accent text-white font-bold py-3 px-10 rounded-lg shadow-lg transition-all uppercase tracking-wide opacity-50 cursor-not-allowed">
+            Continue to Application
+          </button>
+        </div>
+
+        <!-- ================= STAGE 2 — APPLICATION FORM ================= -->
+        <div id="page-1" class="hidden-step">
+          <div
+            class="flex items-center justify-between bg-orange-50 border border-orange-200 rounded-lg px-4 py-3 mb-8 text-sm">
+            <span class="text-gray-700">Applying for: <strong id="intakeChip" class="text-gray-900"></strong></span>
+            <button type="button" onclick="goToPage(0)" class="theme-accent font-bold hover:underline">Change</button>
+          </div>
+          <form id="applicationForm">
+
+            <div class="mb-10">
+              <h2 class="text-xl font-bold border-b-2 theme-border pb-2 mb-6 theme-accent uppercase tracking-wide">Part 1:
+                Personal Information</h2>
+              <div id="part1Fields" class="grid grid-cols-1 md:grid-cols-2 gap-5"></div>
+            </div>
+
+            <div class="mb-10">
+              <h2 class="text-xl font-bold border-b-2 theme-border pb-2 mb-6 theme-accent uppercase tracking-wide">Part 2:
+                Course Choice</h2>
+              <p class="text-sm text-gray-500 mb-4 -mt-2">You can enroll in more than one course — choose a course and category
+                below, then click "Add This Course." Repeat for each course you want.</p>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <select id="course" onchange="updateCourseDetails()"
+                  class="input-light p-3 rounded-lg w-full transition-shadow">
+                  <option value="">Choose Course</option>
+                  <option value="Graphic Design">Graphic Design</option>
+                  <option value="Revit">Revit</option>
+                  <option value="Lumion">Lumion</option>
+                  <option value="AutoCAD">AutoCAD</option>
+                  <option value="SketchUP">SketchUP</option>
+                  <option value="ArchiCAD">ArchiCAD</option>
+                </select>
+
+                <select id="category" onchange="updateCourseDetails()"
+                  class="input-light p-3 rounded-lg w-full transition-shadow">
+                  <option value="">Select Category</option>
+                </select>
+
+                <select id="learningMode" required class="input-light p-3 rounded-lg w-full transition-shadow">
+                  <option value="">Learning Mode</option>
+                  <option value="Physical">Physical Location</option>
+                  <option value="Online">Online</option>
+                </select>
+              </div>
+
+              <div id="dynamicDetails" class="hidden mt-6 p-5 border-l-4 theme-border bg-orange-50 rounded-r-lg shadow-sm">
+                <p class="text-lg font-bold text-gray-800">Fee for this course: <span id="displayFee"
+                    class="theme-accent text-xl">₦0</span></p>
+                <p class="mt-2 font-bold text-gray-700">Learning Outcomes & Requirements:</p>
+                <p id="displayOutcomes" class="text-sm text-gray-600 mt-1 leading-relaxed"></p>
+                <button type="button" onclick="addCourseToCart()"
+                  class="mt-4 theme-bg-accent hover:bg-orange-600 text-white font-bold py-2 px-6 rounded-lg shadow uppercase tracking-wide text-sm transition-transform hover:-translate-y-0.5">+
+                  Add This Course</button>
+              </div>
+
+              <div class="mt-8">
+                <h3 class="font-bold text-gray-700 mb-3 uppercase text-sm tracking-wide">Courses You're Enrolling In</h3>
+                <p id="courseCartEmpty" class="text-sm text-gray-500 italic">No courses added yet — choose a course and category
+                  above, then click "+ Add This Course."</p>
+                <div id="courseCartList" class="space-y-2"></div>
+                <div id="courseCartTotalRow"
+                  class="hidden mt-4 flex justify-between items-center bg-gray-800 text-white rounded-lg px-5 py-3">
+                  <span class="font-bold uppercase tracking-wide text-sm">Total Fee</span>
+                  <span id="cartTotalFee" class="text-xl font-black">₦0</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-8">
+              <h2 class="text-xl font-bold border-b-2 theme-border pb-2 mb-4 theme-accent uppercase tracking-wide">Part 3:
+                Declaration</h2>
+              <div class="bg-white p-5 border border-gray-200 rounded-lg text-sm text-gray-700 space-y-3 shadow-sm">
+                <p>1. <strong>Accuracy:</strong> I certify that all information provided is accurate.</p>
+                <p>2. <strong>Fees:</strong> I understand the required fee must be paid before training commences.</p>
+                <p>3. <strong>Attendance:</strong> Students must maintain 80% attendance for certification.</p>
+                <label class="flex items-center mt-5 text-base font-bold text-black cursor-pointer">
+                  <input type="checkbox" id="terms" required class="mr-3 h-5 w-5 accent-orange-500 rounded"> I accept the terms
+                  and conditions.
+                </label>
+              </div>
+            </div>
+
+            <div class="flex justify-end">
+              <button type="button" onclick="validateAndProceedToPayment()"
+                class="theme-bg-accent hover:bg-orange-600 text-white font-bold py-3 px-10 rounded-lg shadow-lg transition-transform hover:-translate-y-0.5 uppercase tracking-wide">Continue</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- ================= STAGE 3 — PAYMENT ================= -->
+        <div id="page-2" class="hidden-step">
+          <h2 class="text-3xl font-extrabold mb-6 text-center theme-accent uppercase tracking-wide">Payment Gateway</h2>
+
+          <div class="max-w-md mx-auto bg-white border border-gray-200 rounded-xl p-8 text-center shadow-xl">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/OPay_logo.svg/1024px-OPay_logo.svg.png"
+              alt="OPay" class="h-12 mx-auto mb-6">
+
+            <p class="text-gray-500 font-medium mb-2 uppercase tracking-wider">Total Amount Due</p>
+            <p id="checkoutFee" class="text-5xl font-black text-gray-800 mb-8 tracking-tight">₦0</p>
+
+            <div id="tempAccountBox" class="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6 text-left">
+              <div class="flex items-center justify-between mb-3">
+                <p class="text-gray-700 font-bold uppercase tracking-wider text-xs">Make Transfer To This Temporary Account</p>
+                <span id="acctCountdown" class="text-xs font-bold text-orange-700 bg-orange-100 px-2 py-1 rounded">30:00</span>
+              </div>
+              <div class="space-y-1 text-sm">
+                <p class="text-gray-800"><span class="text-gray-500">Bank:</span> <span id="acctBankName"
+                    class="font-bold"></span></p>
+                <p class="text-gray-800"><span class="text-gray-500">Account Number:</span> <span id="acctNumber"
+                    class="font-mono font-black text-lg theme-accent"></span></p>
+                <p class="text-gray-800"><span class="text-gray-500">Account Name:</span> <span id="acctName"
+                    class="font-bold"></span></p>
+                <p class="text-gray-800"><span class="text-gray-500">Payment Reference:</span> <span id="acctReference"
+                    class="font-mono font-bold"></span></p>
+              </div>
+              <p class="text-xs text-gray-500 mt-3">Include the Payment Reference above as your transfer narration/remark so we
+                can match your payment quickly.</p>
+            </div>
+
+            <div class="bg-white p-4 border border-gray-200 rounded-lg shadow-sm text-left">
+              <label class="block font-bold mb-2 text-gray-700">Upload Payment Receipt</label>
+              <input type="file" id="paymentReceiptImage" accept="image/*" required
+                class="w-full text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100">
+            </div>
+
+            <button id="payBtn" onclick="confirmPayment()"
+              class="w-full mt-6 bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-4 rounded-lg shadow-md transition-all text-lg">
+              Confirm Payment
+            </button>
+
+            <div id="paymentLoader" class="hidden mt-6 flex-col items-center">
+              <div class="flex justify-center items-center mb-3">
+                <div class="loader border-4 border-gray-200 rounded-full w-8 h-8 mr-3 animate-spin"></div>
+                <span class="text-gray-700 font-bold">Verifying your payment...</span>
+              </div>
+              <div class="max-w-xs mx-auto bg-gray-200 rounded-full h-2 overflow-hidden w-full">
+                <div id="paymentProgressBar" class="theme-bg-accent h-2 rounded-full transition-all duration-1000"
+                  style="width:0%"></div>
+              </div>
+              <p class="text-xs text-gray-500 mt-3 max-w-xs mx-auto leading-relaxed">
+                We're confirming your transfer with our banking partner — this usually takes up to <span id="paymentCountdown"
+                  class="font-bold text-gray-700">25</span> seconds. Please don't close or refresh this page.
+              </p>
+            </div>
+
+            <div id="paymentSuccessMsg" class="hidden mt-6 text-green-600 font-extrabold flex flex-col items-center text-lg">
+              <svg class="w-16 h-16 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+              </svg>
+              Payment Confirmed!
+            </div>
+
+            <button id="submitDataBtn" onclick="submitFinalData()"
+              class="hidden mt-8 w-full theme-bg-accent hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-lg shadow-lg uppercase tracking-wide">
+              Submit Final Application
+            </button>
+
+            <div id="submitLoader" class="hidden mt-8 flex-col items-center justify-center space-y-3">
+              <div class="flex items-center justify-center">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+                <span class="ml-3 text-gray-700 font-bold">Submitting Application & Generating Receipt...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= RECEIPT ================= -->
+        <div id="page-3"
+          class="hidden-step print-shadow-none bg-white border border-gray-200 rounded-xl p-6 md:p-10 shadow-2xl relative">
+
+          <div id="duplicateNotice"
+            class="hidden print-hide mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4 text-center text-sm text-blue-800 font-semibold">
+            You've already submitted this application. This is your original Registration Summary.
+          </div>
+
+          <div class="text-center border-b-2 border-gray-100 pb-4 mb-6 flex flex-col items-center">
+            <img src="https://lh3.googleusercontent.com/d/1Qp_nbC6oekgdzjJqGBHwHw125t1ABYUf" alt="AH Logo" class="h-16 mb-2">
+            <h2 class="text-2xl md:text-3xl font-black uppercase text-black">
+              AH STUDENT <span class="theme-accent">HUB</span>
+            </h2>
+            <h3 id="receiptIntakeHeader" class="text-lg md:text-xl font-black text-gray-900 tracking-widest mt-1 uppercase">
+            </h3>
+            <p class="text-sm md:text-md text-gray-500 font-bold mt-2 uppercase" id="receiptSubHeader"></p>
+          </div>
+
+          <div class="flex flex-col-reverse md:flex-row justify-between items-start gap-8">
+            <div class="w-full md:w-3/4">
+              <table class="w-full text-left text-gray-700 text-sm md:text-base border-collapse">
+                <tbody>
+                  <tr class="border-b border-gray-100">
+                    <th class="py-3 font-bold w-1/3">Student ID:</th>
+                    <td class="py-3 font-mono font-black text-orange-600 text-lg" id="recAppNo"></td>
+                  </tr>
+                  <tr class="border-b border-gray-100">
+                    <th class="py-3 font-bold">Intake Mode:</th>
+                    <td class="py-3 font-medium" id="recIntake"></td>
+                  </tr>
+                  <tr class="border-b border-gray-100">
+                    <th class="py-3 font-bold">Full Name:</th>
+                    <td class="py-3 font-medium" id="recName"></td>
+                  </tr>
+                  <tr class="border-b border-gray-100">
+                    <th class="py-3 font-bold">DOB:</th>
+                    <td class="py-3 font-medium" id="recDob"></td>
+                  </tr>
+                  <tr class="border-b border-gray-100">
+                    <th class="py-3 font-bold">Gender:</th>
+                    <td class="py-3 font-medium" id="recGender"></td>
+                  </tr>
+                  <tr class="border-b border-gray-100">
+                    <th class="py-3 font-bold">Email:</th>
+                    <td class="py-3 font-medium" id="recEmail"></td>
+                  </tr>
+                  <tr class="border-b border-gray-100">
+                    <th class="py-3 font-bold">Phone:</th>
+                    <td class="py-3 font-medium" id="recPhone"></td>
+                  </tr>
+                  <tr class="border-b border-gray-100">
+                    <th class="py-3 font-bold align-top">Courses Enrolled:</th>
+                    <td class="py-3 font-medium" id="recCourses"></td>
+                  </tr>
+                  <tr class="border-b border-gray-100">
+                    <th class="py-3 font-bold">Learning Mode:</th>
+                    <td class="py-3 font-medium" id="recMode"></td>
+                  </tr>
+                  <tr>
+                    <th class="py-3 font-bold">Total Fee:</th>
+                    <td class="py-3 font-black text-lg theme-accent" id="recTotalFee"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="w-full md:w-1/4 flex justify-center md:justify-end">
+              <div class="p-2 bg-gray-50 border border-gray-200 rounded-lg shadow-sm">
+                <img id="recPassportImg" class="w-36 h-36 md:w-40 md:h-40 object-cover rounded" alt="Applicant Passport" />
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-8 print-hide bg-orange-50 border border-orange-200 p-5 rounded-lg text-sm text-gray-700">
+            <h4 class="font-black text-gray-800 mb-1 uppercase tracking-wide text-xs">Next Step</h4>
+            <p>Check <span class="font-bold" id="recEmailNotice"></span> for your confirmation email — it includes your
+              Student ID and a temporary password to log into the Student Portal. You'll be asked to choose your own
+              password the first time you log in.</p>
+            <p class="mt-2"><a id="recLoginLink" href="student-login.html" class="theme-accent font-bold hover:underline">Log in to
+                the Student Portal &rarr;</a></p>
+          </div>
+
+          <div
+            class="mt-8 bg-gray-50 border-l-4 theme-border p-5 rounded-r-lg text-justify text-xs md:text-sm text-gray-600 leading-relaxed">
+            <h4 class="font-black text-gray-800 mb-2 uppercase tracking-wide">Acknowledgement & Rules</h4>
+            <p class="font-medium">
+              By this registration, the applicant commits to abide by all the rules and regulations of AH Consult LTD. The
+              applicant must attend all classes, actively participate, submit all assignments on time, and pass the final
+              examinations to be certified.
+            </p>
+            <p class="mt-3 text-orange-700 font-bold bg-orange-100 p-2 rounded text-center">
+              Bonus: You can use your Student ID to refer 5 friends to register and get a 20% refund of your
+              registration fee!
+            </p>
+          </div>
+
+          <div class="mt-8 text-center print-hide">
+            <button onclick="window.print()"
+              class="border-2 border-orange-500 hover:bg-orange-500 hover:text-white text-orange-600 font-bold py-3 px-8 rounded-lg transition-colors uppercase tracking-wide shadow">Print
+              / Save as PDF</button>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/core-state.js"></script>
+  <script src="js/stage1-intake.js"></script>
+  <script src="js/stage2-application.js"></script>
+  <script src="js/stage3-payment.js"></script>
+
+  <script>
+    // Bootstrap: fetch server config (INTAKE_MODES, CATEGORIES, categoryFees,
+    // SURVEY_FIELDS — the Development Plan's single source of truth,
+    // Config.gs's equivalent), THEN render the server-driven option lists.
+    let INTAKE_MODES = [];
+    let CATEGORIES = [];
+    let categoryFees = {};
+    let SURVEY_FIELDS = [];
+
+    Api.get('/api/public/config', function (cfg) {
+      INTAKE_MODES = cfg.intakeModes;
+      CATEGORIES = cfg.categories;
+      categoryFees = cfg.categoryFees;
+      SURVEY_FIELDS = cfg.surveyFields;
+
+      renderIntakeCards();
+      renderCategoryOptions();
+      renderSurveyFields();
+      applyCourseParamsFromUrl_();
+    }, function (err) {
+      document.getElementById('intakeCardGroup').innerHTML =
+        '<p class="text-red-600 text-sm font-bold col-span-3">Could not load the application form. Please refresh the page, or contact AH Consult Ltd if this continues.</p>';
+    });
+
+    // A landing-page Program link (e.g. "AutoCAD for Beginners") arrives
+    // here as apply.html?course=AutoCAD&category=Beginner — pre-select
+    // Stage 2's Course/Category fields so the person doesn't have to pick
+    // them again. Never auto-adds to the cart; they still confirm with
+    // "+ Add This Course" themselves.
+    function applyCourseParamsFromUrl_() {
+      const params = new URLSearchParams(window.location.search);
+      const course = params.get('course');
+      const category = params.get('category');
+      if (!course && !category) return;
+
+      const courseEl = document.getElementById('course');
+      const categoryEl = document.getElementById('category');
+      if (course && [...courseEl.options].some(o => o.value === course)) courseEl.value = course;
+      if (category && [...categoryEl.options].some(o => o.value === category)) categoryEl.value = category;
+      if (courseEl.value || categoryEl.value) updateCourseDetails();
+    }
+  </script>
+
+</body>
+
+</html>

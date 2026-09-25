@@ -52,6 +52,48 @@ class DataService:
         rows = self.db.get_all_rows_as_dicts(sheet, headers)
         return {r["Registration ID"] for r in rows if r.get("Course") == course and r.get("Category") == category}
 
+    def get_registration_ids_assigned_to_tutor(self, tutor_email):
+        """The AUTHORITATIVE tutor roster lookup — every registration ID
+        whose Courses row has this tutor's email in "Assigned Tutor".
+        Unlike get_registration_ids_for_course (a Course+Category
+        convention match, still used for the registration-time "Tutor
+        Code" suggestion and for the student's own "classmates" count),
+        this is the explicit, admin-controlled assignment that actually
+        determines what a tutor can see and grade. See
+        docs/ARCHITECTURE_AND_DECISIONS.md, Section 14."""
+        sheet = self.courses_sheet()
+        headers = self.db.headers(sheet)
+        rows = self.db.get_all_rows_as_dicts(sheet, headers)
+        target = str(tutor_email or "").strip().lower()
+        return {r["Registration ID"] for r in rows if str(r.get("Assigned Tutor", "")).strip().lower() == target and target}
+
+    def assign_tutor_to_course(self, student_id, course, tutor_email):
+        """Sets (or clears, if tutor_email is falsy) the explicit
+        "Assigned Tutor" on the one Courses row matching this
+        Registration ID + Course. Returns True if a matching row was
+        found and updated, False otherwise."""
+        sheet = self.courses_sheet()
+        headers = self.db.headers(sheet)
+        values = sheet.get_all_values()
+        reg_idx = headers.index("Registration ID")
+        course_idx = headers.index("Course")
+        for i, row in enumerate(values[1:], start=2):
+            row_reg = row[reg_idx] if reg_idx < len(row) else ""
+            row_course = row[course_idx] if course_idx < len(row) else ""
+            if row_reg == student_id and row_course == course:
+                self.db.set_cell(sheet, headers, i, "Assigned Tutor", tutor_email or "")
+                return True
+        return False
+
+    def get_tutors_for_course(self, course, category):
+        """All Tutors rows registered for this exact Course + Category —
+        used to populate the admin's "assign a tutor" dropdown scoped to
+        tutors who actually teach that course."""
+        sheet = self.tutors_sheet()
+        headers = self.db.headers(sheet)
+        rows = self.db.get_all_rows_as_dicts(sheet, headers)
+        return [r for r in rows if r.get("Course") == course and r.get("Category") == category]
+
     # --- Tutors --------------------------------------------------------------
 
     def tutors_sheet(self):
@@ -81,11 +123,15 @@ class DataService:
         return ""
 
     def build_tutor_bundle(self, tutor):
-        """Everything the Tutor Portal needs, scoped strictly to this
-        tutor's Course + Category. Mirrors buildTutorBundle_ in Code.gs."""
+        """Everything the Tutor Portal needs, scoped strictly to students
+        explicitly assigned to this tutor (see
+        get_registration_ids_assigned_to_tutor) — NOT every student who
+        merely shares this tutor's Course + Category. Mirrors
+        buildTutorBundle_ in Code.gs, updated for explicit assignment."""
         course, category = tutor.get("Course"), tutor.get("Category")
+        tutor_email = tutor.get("Email")
 
-        enrolled_ids = self.get_registration_ids_for_course(course, category)
+        enrolled_ids = self.get_registration_ids_assigned_to_tutor(tutor_email)
         reg_sheet = self.registrations_sheet()
         reg_headers = self.db.headers(reg_sheet)
         matched_regs = [r for r in self.db.get_all_rows_as_dicts(reg_sheet, reg_headers) if r.get("Reg ID") in enrolled_ids]

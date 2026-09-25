@@ -16,6 +16,13 @@ This blueprint additionally exposes /tutors and /intakes endpoints so the
 Admin Dashboard UI can do the same thing without leaving the app — a
 disclosed convenience layered on top of the original model, not a
 replacement for it.
+
+TUTOR ASSIGNMENT is different from the two above — it is NOT just a
+convenience layer over manual sheet editing. /registrations/assign-tutor
+is now the one authoritative way a student ends up on a tutor's roster
+(the Courses sheet's "Assigned Tutor" column), replacing the previous
+course/category auto-matching. See
+docs/ARCHITECTURE_AND_DECISIONS.md, Section 14.
 ==============================================================================
 """
 
@@ -52,6 +59,7 @@ def get_admin_dashboard_data():
         courses_by_reg.setdefault(rid, []).append({
             "course": c.get("Course"), "category": c.get("Category"),
             "courseCode": c.get("CourseCode"), "fee": c.get("Fee"), "tutorCode": c.get("Tutor Code"),
+            "assignedTutor": c.get("Assigned Tutor", ""),
         })
 
     admitted = pending = rejected = 0
@@ -102,6 +110,37 @@ def update_admission_status():
     ext.sheets_client.set_cell(sheet, headers, row_index, "Admission Status", new_status)
     ext.security.log_action(ext.sheets_client, session["actorId"], CONFIG.ROLES["ADMIN"], "ADMISSION_STATUS_UPDATED", f"RegId={reg_id}; NewStatus={new_status}")
     return jsonify(success=True, regId=reg_id, admissionStatus=new_status)
+
+
+@admin_bp.post("/registrations/assign-tutor")
+def assign_tutor():
+    """Sets the ONE authoritative field that puts a student on a tutor's
+    roster (Courses sheet's "Assigned Tutor" column) — replacing the
+    course/category auto-matching the Tutor Portal used to rely on. Pass
+    tutorEmail: "" to unassign / clear it. See
+    docs/ARCHITECTURE_AND_DECISIONS.md, Section 14."""
+    payload = request.get_json(force=True, silent=True) or {}
+    try:
+        session = _require_session()
+    except PermissionError as e:
+        return jsonify(success=False, error=str(e)), 401
+
+    reg_id = payload.get("regId")
+    course = payload.get("course")
+    tutor_email = str(payload.get("tutorEmail") or "").strip().lower()
+    if not reg_id or not course:
+        return jsonify(success=False, error="regId and course are required."), 400
+
+    if tutor_email and not ext.data_service.find_tutor_by_email(tutor_email):
+        return jsonify(success=False, error="No tutor account exists with that email."), 404
+
+    updated = ext.data_service.assign_tutor_to_course(reg_id, course, tutor_email)
+    if not updated:
+        return jsonify(success=False, error="No matching enrolled course found for that student."), 404
+
+    action = "TUTOR_ASSIGNED" if tutor_email else "TUTOR_UNASSIGNED"
+    ext.security.log_action(ext.sheets_client, session["actorId"], CONFIG.ROLES["ADMIN"], action, f"RegId={reg_id}; Course={course}; TutorEmail={tutor_email}")
+    return jsonify(success=True, regId=reg_id, course=course, assignedTutor=tutor_email)
 
 
 # --------------------------------------------------------------------------

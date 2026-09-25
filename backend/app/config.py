@@ -185,7 +185,18 @@ class Config:
             "PasswordHash", "PasswordSalt", "CreatedDate", "PassportPhoto",
         ],
         "COURSES": [
-            "Registration ID", "Full Name", "Course", "Category", "CourseCode", "Fee", "Tutor Code", "Timestamp",
+            # "Tutor Code" is auto-filled at registration as a suggested
+            # convention label (from whichever Tutors row already teaches
+            # this Course+Category) — informational only. "Assigned
+            # Tutor" is the tutor's email and is the ONE authoritative
+            # field that actually puts a student on a tutor's roster; it
+            # starts blank and is set explicitly by an admin (Admin
+            # Dashboard -> a registration's course row -> Assign Tutor,
+            # or POST /api/admin/registrations/assign-tutor) rather than
+            # being inferred automatically. See
+            # docs/ARCHITECTURE_AND_DECISIONS.md, Section 14.
+            "Registration ID", "Full Name", "Course", "Category", "CourseCode", "Fee", "Tutor Code",
+            "Assigned Tutor", "Timestamp",
         ],
         "ASSIGNMENTS": [
             "AssignmentID", "CourseCode", "Course", "Category", "TutorCode", "Title", "Description",

@@ -220,3 +220,145 @@ access revoked, every deployment using that token loses Sheets/Drive
 access until a new token is generated (Step 3) from a working account.
 For a single small-organization deployment like this one, that trade-off
 is worth the alternative of paid Workspace/Shared Drives it avoids.
+
+## 13. Critical fix: registrations silently hanging forever ("Submitting...")
+
+**Symptom reported:** new registrations got stuck at "Submitting
+Application & Generating Receipt..." indefinitely. The passport photo
+DID appear in the `AHCT_Passports` Drive folder, `SystemLogs` showed
+activity, but no row was ever written to `Registrations`.
+
+**Root cause: a genuine deadlock**, not a Sheets/Drive permissions
+problem. `blueprints/registration.py`'s critical section acquired
+`GLOBAL_LOCK` (`services/sheets.py`) and, while still holding it, called
+`services/ids.py`'s `generate_student_id()`, which itself calls
+`next_counter_value()` — which *also* acquires `GLOBAL_LOCK`. It was a
+plain `threading.Lock()`, which is **not reentrant**: a thread trying to
+acquire a lock it already holds blocks forever, on itself. That exactly
+matches the reported symptom — the passport/receipt uploads (which
+happen *before* the lock) succeeded and appeared in Drive; any log lines
+written before the lock (e.g. a `TUTOR_CODE_NOT_FOUND` warning during
+course validation) appeared in `SystemLogs`; then the request thread
+hung permanently trying to re-enter a lock it was already inside, so the
+`Registrations` row was never written and the HTTP response never came
+back — leaving the frontend spinning forever.
+
+**Fix:** `GLOBAL_LOCK` is now a `threading.RLock()` instead of a plain
+`threading.Lock()`. `RLock` allows the *same thread* to acquire it
+multiple times (with matching releases) while still only ever letting
+one thread through at a time overall — which is all the atomicity this
+code actually needs. This was verified directly: an isolated
+reproduction of the exact nested-acquisition pattern deadlocks
+permanently with the old `Lock()` and completes immediately with the new
+`RLock()`.
+
+**A related, secondary fix:** `gunicorn_config.py` set `threads = 4` but
+never set `worker_class = "gthread"`. Gunicorn's default "sync" worker
+class **silently ignores `threads` entirely** and handles exactly one
+request at a time, full stop — meaning the service could only ever
+process one request across the *entire application* at once (including
+Render's own health-check pings). `worker_class = "gthread"` is now set
+explicitly so `threads = 4` actually takes effect.
+
+## 14. Explicit, admin-controlled Tutor Assignment
+
+Previously, a tutor's "roster" was computed implicitly: any student
+enrolled in the same Course + Category a tutor was registered for showed
+up on that tutor's dashboard automatically, with no admin action
+required. Per request ("Assign Tutors professionally instead of system
+automation"), this is now explicit:
+
+- The `Courses` sheet gained an **"Assigned Tutor"** column (a tutor's
+  email — blank by default; the pre-existing "Tutor Code" column is
+  unchanged and stays purely informational, auto-filled at registration
+  as a suggested convention label).
+- `POST /api/admin/registrations/assign-tutor` (regId, course,
+  tutorEmail) is the one place that sets it — from the Admin Dashboard's
+  registrations table, each enrolled course now has a live "Tutor"
+  dropdown (scoped to tutors actually registered for that course +
+  category) right in the expanded row.
+- `services/data_service.py`'s `build_tutor_bundle` (and every other
+  tutor-roster/ownership check — the dashboard's "assigned" flag, the
+  Grade Student ownership check) now reads
+  `get_registration_ids_assigned_to_tutor(tutor_email)` instead of the
+  old course/category convention match
+  (`get_registration_ids_for_course`, which still exists and is used
+  only for the registration-time "suggested" Tutor Code and the
+  student's own "classmates" count — a different, legitimate use).
+- Registration itself no longer auto-populates "Assigned Tutor" — a
+  student's course rows start unassigned and stay that way until an
+  admin explicitly assigns them.
+
+Admin also gained an **Intake Modes** tab (add new intakes; edit any
+intake's opening/closing dates) — wired to `/api/admin/intakes` and
+`/intakes/update`, which already existed in the backend from the first
+build but had no frontend UI.
+
+## 15. New landing page; registration form renamed to apply.html
+
+Per request, a proper marketing landing/home page now exists at
+`frontend/index.html`, adapted from AH Consult Ltd's live homepage
+(`ahconsultcadprograms.netlify.app`, supplied as `Index.html`) — same
+photos (all 10 real graduation-gallery images, verified byte-for-byte
+against the supplied file's Google Drive IDs), same copy, same dark-mode
+toggle, same embedded Google Map, same Montserrat/Open Sans +
+brandOrange/brandBlack design system, kept deliberately separate from
+the app's own orange/Roboto `css/styles.css` theme since it's the public
+marketing site the app's pages link out from, not one of the app's own
+portal pages.
+
+What actually needed to be a Public Application Portal page — Stage 1-4
+of the registration flow — **moved from `index.html` to `apply.html`**
+so `index.html` could become the new landing page. Every internal link
+that used to point at the old `index.html` (student-login.html's "Start
+an application," code comments) was updated to `apply.html`.
+
+**Every KoBoToolbox link/reference from the source homepage was
+removed**, replaced with links into this app: "Apply Now" (nav, hero,
+mobile menu, Admission Gateway) goes to `apply.html`; new "Student
+Login" / "Staff Login" links were added throughout (nav, mobile menu,
+hero, and as three direct cards replacing the Admission Gateway's old
+KoBoToolbox button) so all three entry points are reachable straight
+from Home, as requested.
+
+**Two disclosed content decisions**, since the source material didn't
+map cleanly onto this app:
+- The source Programs section advertised 6 software packages: AutoCAD,
+  ArchiCAD, SketchUP, Revit, Lumion, **VRAY**. This app's actual
+  registrable course catalog (`CONFIG.COURSES`) is a *different* 6: the
+  same five, plus **Graphic Design**, minus VRAY. Rather than silently
+  drop one list or the other, the landing page shows all 7: the five
+  shared courses' tier links pre-select that course/category on
+  `apply.html` (via `?course=...&category=...`, read by a small addition
+  to `apply.html`'s bootstrap script); a Graphic Design card was added
+  (a real course the source homepage didn't advertise); VRAY was kept
+  for continuity but its tier links fall back to a plain `apply.html`
+  since there's no matching course to pre-select.
+- The source Records section had exactly ONE real example filled in
+  (an AutoCAD Beginner card, two named students) with a code comment,
+  "Add other cards similarly," implying more were intended but not
+  supplied. Rather than invent additional student names or scores, the
+  landing page keeps only that one genuine example and reframes the
+  section's copy as a sample rather than a full record book. Send real
+  examples and more can be added the same way.
+
+## 16. Mobile navigation on the three dashboards
+
+The Student/Tutor/Admin dashboard sidebars were `hidden md:flex` — on
+any phone-width screen the sidebar simply disappeared, with **no**
+replacement, leaving no way to switch views at all. `js/components.js`'s
+`renderSidebar`/`renderHeader` now implement a real slide-in drawer:
+a hamburger button in the header (visible only below the `md:` breakpoint)
+opens the sidebar as an overlay with a tap-to-close backdrop; selecting a
+nav item or tapping outside closes it again; at `md:` and above it's
+exactly the same always-visible fixed sidebar as before. `portal.html`,
+`tutor.html`, and `admin-dashboard.html` were updated to match (a new
+backdrop element, and the sidebar's initial classes updated so there's
+no flash of the wrong state before `components.js` runs).
+
+Two data tables that are wider than a phone screen — the Admin
+Dashboard's registrations table and the Tutor Portal's roster table —
+were also missing horizontal scroll containment (`overflow-x: auto`),
+which would otherwise push the whole page sideways on a narrow screen
+instead of scrolling just the table; both are fixed.
+

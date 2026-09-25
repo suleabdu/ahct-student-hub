@@ -1,9 +1,9 @@
 /* =============================================================================
    js/core-state.js
    AH Student Hub — shared state & navigation for the 4-stage registration
-   portal (index.html). Ported from CoreState.html — the prices still come
+   portal (apply.html). Ported from CoreState.html — the prices still come
    from the server (Flask's /api/public/config, mirroring Config.gs's
-   CATEGORY_FEES) via the categoryFees constant index.html injects, so this
+   CATEGORY_FEES) via the categoryFees constant apply.html injects, so this
    file and the backend can never charge two different amounts for the
    same category.
    ============================================================================= */

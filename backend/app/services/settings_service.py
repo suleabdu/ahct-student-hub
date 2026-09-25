@@ -36,7 +36,9 @@ class SettingsService:
 
     def get_intake_mode_options(self):
         """Returns every configured intake mode with its current
-        open/closed status, e.g. [{label, isOpen}, ...]. Both dates are
+        open/closed status and its raw opening/closing dates (so admin UI
+        can show and edit them), e.g.
+        [{label, isOpen, openingDate, closingDate}, ...]. Both dates are
         inclusive."""
         sheet = self.ensure_settings_seeded()
         headers = self.config.HEADERS["SETTINGS_INTAKES"]
@@ -51,7 +53,12 @@ class SettingsService:
             open_date = self._parse_date(r.get("Opening Date"))
             close_date = self._parse_date(r.get("Closing Date"))
             is_open = (open_date is None or today >= open_date) and (close_date is None or today <= close_date)
-            options.append({"label": label, "isOpen": is_open})
+            options.append({
+                "label": label,
+                "isOpen": is_open,
+                "openingDate": r.get("Opening Date", ""),
+                "closingDate": r.get("Closing Date", ""),
+            })
         return options
 
     @staticmethod

@@ -157,8 +157,10 @@ deployed anywhere; they're only for this one-time local step.
    cd frontend
    python3 -m http.server 8888
    ```
-3. Visit `http://localhost:8888` — you should see the registration
-   portal, with intake cards loading from your backend.
+3. Visit `http://localhost:8888` — you should see the new landing page.
+   Click **Apply Now** (or go straight to
+   `http://localhost:8888/apply.html`) to see the registration portal,
+   with intake cards loading from your backend.
 4. Test the full flow: submit an application (Stage 1–3), then log in at
    `http://localhost:8888/student-login.html` with the Student ID you
    were given and the default password (`123456` unless you changed
@@ -270,7 +272,8 @@ setup.
 
 ## Step 12 — Test the live site end to end
 
-1. Visit your Netlify URL. Submit a test registration.
+1. Visit your Netlify URL — you should land on the new home page. Click
+   **Apply Now** and submit a test registration.
 2. Check that the confirmation email arrives (Step 10).
 3. Log in as that student, confirm the forced password-change screen
    appears, set a new password, and land on the (not-yet-admitted)
@@ -278,15 +281,26 @@ setup.
 4. As Admin (Step 7), open the Admin Dashboard, find that registration,
    and change its Admission Status to **Admitted**. Reload the student
    portal — the full dashboard (cards, assignments) should now appear.
-5. As the Tutor for that student's course/category (Step 8), confirm the
-   student shows up on your roster, create an assignment, and confirm it
-   appears in the student's Assignments view.
-6. Try **Grade Student** (Tutor Portal) and confirm the Total/Exam Status
+5. Still in the Admin Dashboard, expand that registration's course row
+   and use the new **Tutor** dropdown to assign it to the Tutor from
+   Step 8 — a student's course only shows up on a tutor's roster once
+   explicitly assigned this way (Section 14 of the architecture doc).
+6. As that Tutor, confirm the student now shows up on your roster,
+   create an assignment, and confirm it appears in the student's
+   Assignments view.
+7. Try **Grade Student** (Tutor Portal) and confirm the Total/Exam Status
    calculate correctly and the Leaderboard updates
    (`services/analytics_service.py`).
-7. Confirm a file upload (e.g. the passport photo during registration)
+8. Confirm a file upload (e.g. the passport photo during registration)
    actually lands in the Google Drive of the account from Step 1 — open
    Drive in that account and look for the `AHCT_Passports` folder.
+9. On your phone (or a narrow browser window), open the Student, Tutor,
+   and Admin dashboards and confirm the hamburger menu in the header
+   opens a slide-in sidebar you can navigate with — the sidebar should
+   never simply be missing with no way to switch views.
+10. In the Admin Dashboard's **Intake Modes** tab, edit an intake's
+    dates (or add a new one) and confirm it updates immediately on the
+    public Apply form.
 
 ## Optional: live payments with Monnify
 
@@ -328,3 +342,5 @@ accounts:
 | Registration email never arrives | `EMAIL_ENABLED=false`, or Gmail app password wrong/missing 2-Step Verification (Step 10) |
 | "This is taking longer than expected" on first login after deploy | Normal on Render's free tier waking from sleep — wait ~30–60s and click Try Again |
 | Two people register at the exact same instant and something looks racy | See `docs/ARCHITECTURE_AND_DECISIONS.md`, Section 9 — make sure Render is running exactly 1 worker (the default `gunicorn_config.py` setting) |
+| Registration stuck at "Submitting Application & Generating Receipt..." forever, no row appears in Registrations | This was a real deadlock bug, fixed in this build — see `docs/ARCHITECTURE_AND_DECISIONS.md`, Section 13. If you still see this after deploying the fixed code, confirm `services/sheets.py`'s `GLOBAL_LOCK` is a `threading.RLock()` (not `Lock()`) and `gunicorn_config.py` sets `worker_class = "gthread"` |
+| A tutor logs in and sees "No Students Assigned Yet" even though students registered for their course | Expected — tutor rosters are no longer automatic (Section 14). An admin must explicitly assign each student's course to that tutor from the Admin Dashboard's registrations table (the "Tutor" dropdown in each expanded course row) |

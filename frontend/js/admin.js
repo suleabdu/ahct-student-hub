@@ -2,18 +2,20 @@
    js/admin.js
    AH Student Hub — Admin Dashboard logic. Ported from AdminDashboard.html's
    inline <script>. google.script.run calls become Api.call() against
-   Flask's /api/admin/* endpoints. EXTENDED with a Tutors view — see
-   admin-dashboard.html's header note.
+   Flask's /api/admin/* endpoints. EXTENDED with Tutors, Intake Modes, and
+   per-course tutor assignment — see admin-dashboard.html's header note.
    ============================================================================= */
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
   { id: 'tutors', label: 'Tutors', icon: '🎓' },
+  { id: 'intakes', label: 'Intake Modes', icon: '🗓️' },
 ];
 
 let sessionToken = null;
 let allRows = [];
 let admissionStatuses = [];
+let allTutors = [];
 
 function showView(id) {
   document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
@@ -23,6 +25,7 @@ function showView(id) {
 function handleNavClick(navId) {
   showView(navId);
   if (navId === 'tutors') loadTutors();
+  if (navId === 'intakes') loadIntakes();
 }
 
 function doLogout() {
@@ -120,9 +123,25 @@ function renderTable() {
   emptyMsg.classList.add('hidden');
 
   tbody.innerHTML = visible.map((row, i) => {
-    const coursesDetail = (row.courses || []).map(c =>
-      `${c.course} (${c.category}) — ₦${(Number(c.fee) || 0).toLocaleString()}${c.tutorCode ? ' &middot; ' + c.tutorCode : ''}`
-    ).join('<br>') || '<span class="text-gray-400">No courses recorded</span>';
+    const coursesDetail = (row.courses || []).length === 0
+      ? '<span class="text-gray-400">No courses recorded</span>'
+      : row.courses.map((c, ci) => {
+        const tutorOptions = allTutors
+          .filter(t => t.Course === c.course && t.Category === c.category)
+          .map(t => `<option value="${t.Email}" ${t.Email === c.assignedTutor ? 'selected' : ''}>${t.TutorName || t.Email}</option>`)
+          .join('');
+        const noMatchingTutors = tutorOptions === '';
+        return `
+            <div class="flex flex-wrap items-center gap-3 py-2 ${ci > 0 ? 'border-t border-gray-200' : ''}">
+              <span class="min-w-[220px]">${c.course} <span class="text-gray-400">(${c.category})</span> — ₦${(Number(c.fee) || 0).toLocaleString()}</span>
+              <label class="text-gray-400 text-xs uppercase tracking-wide">Tutor:</label>
+              <select class="tutor-assign-select input-light text-xs p-1.5 rounded-lg" data-reg-id="${row.regId}" data-course="${c.course}" ${noMatchingTutors ? 'disabled' : ''}>
+                <option value="">— Unassigned —</option>
+                ${tutorOptions}
+              </select>
+              ${noMatchingTutors ? '<span class="text-xs text-gray-400 italic">No tutor registered for this course/category yet</span>' : ''}
+            </div>`;
+      }).join('');
 
     return `
           <tr class="border-t border-gray-100 hover:bg-gray-50 align-top">
@@ -163,6 +182,28 @@ function renderTable() {
   tbody.querySelectorAll('.admission-select').forEach(sel => {
     sel.addEventListener('change', () => onAdmissionStatusChange(sel));
   });
+
+  tbody.querySelectorAll('.tutor-assign-select').forEach(sel => {
+    sel.addEventListener('change', () => onTutorAssignChange(sel));
+  });
+}
+
+function onTutorAssignChange(selectEl) {
+  const regId = selectEl.dataset.regId;
+  const course = selectEl.dataset.course;
+  const tutorEmail = selectEl.value;
+  selectEl.disabled = true;
+
+  Api.call('/api/admin/registrations/assign-tutor', { regId, course, tutorEmail }, function () {
+    selectEl.disabled = false;
+    const row = allRows.find(r => r.regId === regId);
+    const courseEntry = row && (row.courses || []).find(c => c.course === course);
+    if (courseEntry) courseEntry.assignedTutor = tutorEmail;
+  }, function (err) {
+    selectEl.disabled = false;
+    alert('Something went wrong: ' + (err.message || err));
+    renderTable(); // revert the dropdown to the last known-good state
+  }, sessionToken);
 }
 
 function onAdmissionStatusChange(selectEl) {
@@ -202,7 +243,10 @@ function refreshSummaryFromRows() {
 // ============================ TUTORS ============================
 
 function loadTutors() {
-  Api.call('/api/admin/tutors', {}, function (res) { renderTutorsTable(res.tutors); }, function () { }, sessionToken);
+  Api.call('/api/admin/tutors', {}, function (res) {
+    allTutors = res.tutors || [];
+    renderTutorsTable(allTutors);
+  }, function () { }, sessionToken);
 }
 
 function renderTutorsTable(tutors) {
@@ -254,6 +298,91 @@ function addTutorClick() {
   }, sessionToken);
 }
 
+// ============================ INTAKE MODES ============================
+
+function loadIntakes() {
+  Api.call('/api/admin/intakes', {}, function (res) { renderIntakesList(res.intakes); }, function () { }, sessionToken);
+}
+
+function toDateInputValue_(isoLike) {
+  if (!isoLike) return '';
+  return String(isoLike).split('T')[0];
+}
+
+function renderIntakesList(intakes) {
+  const listEl = document.getElementById('intakesList');
+  if (!intakes || intakes.length === 0) {
+    listEl.innerHTML = '<p class="text-sm text-gray-500 italic">No intakes configured yet — add one above.</p>';
+    return;
+  }
+
+  listEl.innerHTML = intakes.map((intake, i) => `
+        <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <span class="font-bold text-gray-800">${intake.label}</span>
+              <span class="text-xs font-bold uppercase tracking-wide px-3 py-1 rounded-full ${intake.isOpen ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}">${intake.isOpen ? 'Open' : 'Closed'}</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <label class="text-xs text-gray-500">Opens</label>
+              <input type="date" id="intakeOpen-${i}" value="${toDateInputValue_(intake.openingDate)}" class="input-light text-xs p-1.5 rounded-lg">
+              <label class="text-xs text-gray-500">Closes</label>
+              <input type="date" id="intakeClose-${i}" value="${toDateInputValue_(intake.closingDate)}" class="input-light text-xs p-1.5 rounded-lg">
+              <button type="button" onclick="saveIntakeClick('${intake.label.replace(/'/g, "\\'")}', ${i})" class="theme-bg-accent hover:bg-orange-600 text-white font-bold py-1.5 px-4 rounded-lg text-xs uppercase tracking-wide">Save</button>
+            </div>
+          </div>
+          <p id="intakeError-${i}" class="hidden text-red-600 text-sm mt-2"></p>
+        </div>
+      `).join('');
+}
+
+function saveIntakeClick(label, i) {
+  const errEl = document.getElementById('intakeError-' + i);
+  errEl.classList.add('hidden');
+  const openingDate = document.getElementById('intakeOpen-' + i).value;
+  const closingDate = document.getElementById('intakeClose-' + i).value;
+
+  Api.call('/api/admin/intakes/update', { label, openingDate, closingDate }, function () {
+    loadIntakes();
+  }, function (err) {
+    errEl.innerText = (err && err.message) || 'Something went wrong.';
+    errEl.classList.remove('hidden');
+  }, sessionToken);
+}
+
+function addIntakeClick() {
+  const errEl = document.getElementById('addIntakeError');
+  errEl.classList.add('hidden');
+
+  const label = document.getElementById('newIntakeLabel').value.trim();
+  const openingDate = document.getElementById('newIntakeOpen').value;
+  const closingDate = document.getElementById('newIntakeClose').value;
+  if (!label) {
+    errEl.innerText = 'Please name this intake, e.g. "June 2027 Intake".';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  if (!openingDate || !closingDate) {
+    errEl.innerText = 'Please set both an opening and a closing date.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  const btn = document.getElementById('addIntakeBtn');
+  btn.disabled = true;
+  Api.call('/api/admin/intakes/update', { label, openingDate, closingDate }, function () {
+    btn.disabled = false;
+    document.getElementById('newIntakeLabel').value = '';
+    document.getElementById('newIntakeOpen').value = '';
+    document.getElementById('newIntakeClose').value = '';
+    loadIntakes();
+  }, function (err) {
+    btn.disabled = false;
+    errEl.innerText = (err && err.message) || 'Something went wrong.';
+    errEl.classList.remove('hidden');
+  }, sessionToken);
+}
+
 // ============================ LOAD ============================
 
 let loadWatchdog = null;
@@ -294,7 +423,16 @@ function loadDashboard() {
 
       renderSummaryCards(res.summary || { totalApplications: 0, admitted: 0, pending: 0, rejected: 0 });
       populateFilterOptions(allRows);
-      renderTable();
+
+      // Tutors are needed to populate the per-course "Assign Tutor"
+      // dropdowns, so fetch them before the first render rather than
+      // only when the Tutors tab is opened.
+      Api.call('/api/admin/tutors', {}, function (tutorsRes) {
+        allTutors = tutorsRes.tutors || [];
+        renderTable();
+      }, function () {
+        renderTable(); // tutor list failed to load — table still renders, just without assignment options
+      }, sessionToken);
 
       ['filterSearch', 'filterCourse', 'filterCategory', 'filterStatus'].forEach(id => {
         const el = document.getElementById(id);

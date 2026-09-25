@@ -8,4 +8,4 @@
    See docs/SETUP_GUIDE.md, Step 6.
    ============================================================================= */
 
-const API_BASE_URL = "https://ahct-student-hub.onrender.com/";  // <-- CHANGE THIS TO YOUR DEPLOYED BACKEND URL
+const API_BASE_URL = "https://ahct-student-hub.onrender.com";

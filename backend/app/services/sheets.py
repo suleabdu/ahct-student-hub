@@ -56,7 +56,25 @@ SCOPES = [
 # LockService.getScriptLock() made in the original project: simple and
 # safe, at the cost of serializing unrelated writes briefly. See
 # services/ids.py for the note on horizontally-scaled deployments.
-GLOBAL_LOCK = threading.Lock()
+#
+# RLock, not Lock: several call paths acquire this lock and then call
+# into another function that acquires it again on the SAME thread (e.g.
+# blueprints/registration.py holds it for the whole "check duplicate +
+# generate ID + write rows" critical section, and ids.py's
+# next_counter_value() — called from inside that same block — also
+# acquires it around the counter read/write). A plain threading.Lock()
+# is NOT reentrant, so that nested acquisition deadlocks the request
+# forever: the passport/receipt uploads (which happen before the lock)
+# complete and appear in Drive, any log lines written before the lock
+# (e.g. TUTOR_CODE_NOT_FOUND) appear in SystemLogs, but the thread then
+# blocks permanently trying to re-acquire a lock it already holds — the
+# Registrations row is never written and the request never returns, so
+# the frontend sits at "Submitting Application..." indefinitely.
+# threading.RLock() allows the same thread to acquire it multiple times
+# (with matching releases) while still only ever allowing ONE thread
+# through at a time overall, which is all the atomicity guarantee here
+# actually requires.
+GLOBAL_LOCK = threading.RLock()
 
 
 class SheetsClient:
