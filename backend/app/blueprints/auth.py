@@ -248,8 +248,12 @@ def request_password_reset():
     })
 
     reset_link = f"{CONFIG.FRONTEND_URL}/reset-password.html?token={token}"
-    ext.email_service.send_password_reset_email(email, account["displayName"], reset_link)
-    ext.security.log_action(ext.sheets_client, account["actorId"], role, "PASSWORD_RESET_REQUESTED", "")
+    email_result = ext.email_service.send_password_reset_email(email, account["displayName"], reset_link)
+    ext.security.log_action(
+        ext.sheets_client, account["actorId"], role,
+        "PASSWORD_RESET_REQUESTED" if email_result["sent"] else "PASSWORD_RESET_EMAIL_FAILED",
+        "" if email_result["sent"] else f'To={email}; Reason={email_result["reason"]}',
+    )
     return jsonify(success=True)
 
 

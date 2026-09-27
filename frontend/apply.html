@@ -97,7 +97,12 @@
             </p>
           </div>
 
-          <div id="intakeCardGroup" class="grid grid-cols-1 sm:grid-cols-3 gap-5 max-w-3xl mx-auto mb-10"></div>
+          <div id="intakeLoadingIndicator" class="flex flex-col items-center justify-center py-10 mb-10">
+            <div class="loader border-4 border-gray-200 rounded-full w-10 h-10 mb-4"></div>
+            <p class="text-gray-500 text-sm font-bold uppercase tracking-wide">Loading Active Intakes, Please wait...</p>
+          </div>
+
+          <div id="intakeCardGroup" class="hidden grid grid-cols-1 sm:grid-cols-3 gap-5 max-w-3xl mx-auto mb-10"></div>
 
           <input type="hidden" id="intakeMode" value="">
 
@@ -408,7 +413,10 @@
       renderSurveyFields();
       applyCourseParamsFromUrl_();
     }, function (err) {
-      document.getElementById('intakeCardGroup').innerHTML =
+      document.getElementById('intakeLoadingIndicator').classList.add('hidden');
+      const container = document.getElementById('intakeCardGroup');
+      container.classList.remove('hidden');
+      container.innerHTML =
         '<p class="text-red-600 text-sm font-bold col-span-3">Could not load the application form. Please refresh the page, or contact AH Consult Ltd if this continues.</p>';
     });
 

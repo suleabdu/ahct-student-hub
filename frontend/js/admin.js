@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
   { id: 'tutors', label: 'Tutors', icon: '🎓' },
   { id: 'intakes', label: 'Intake Modes', icon: '🗓️' },
+  { id: 'diagnostics', label: 'Diagnostics', icon: '🩺' },
 ];
 
 let sessionToken = null;
@@ -376,6 +377,34 @@ function addIntakeClick() {
     document.getElementById('newIntakeOpen').value = '';
     document.getElementById('newIntakeClose').value = '';
     loadIntakes();
+  }, function (err) {
+    btn.disabled = false;
+    errEl.innerText = (err && err.message) || 'Something went wrong.';
+    errEl.classList.remove('hidden');
+  }, sessionToken);
+}
+
+// ============================ DIAGNOSTICS ============================
+
+function sendTestEmailClick() {
+  const errEl = document.getElementById('testEmailError');
+  const okEl = document.getElementById('testEmailSuccess');
+  errEl.classList.add('hidden');
+  okEl.classList.add('hidden');
+
+  const to = document.getElementById('testEmailTo').value.trim();
+  if (!to) {
+    errEl.innerText = 'Please enter an email address.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  const btn = document.getElementById('testEmailBtn');
+  btn.disabled = true;
+  Api.call('/api/admin/email/test', { to }, function () {
+    btn.disabled = false;
+    okEl.innerText = 'Sent! Check ' + to + ' (and its spam folder).';
+    okEl.classList.remove('hidden');
   }, function (err) {
     btn.disabled = false;
     errEl.innerText = (err && err.message) || 'Something went wrong.';

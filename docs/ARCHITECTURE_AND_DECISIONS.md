@@ -362,3 +362,170 @@ were also missing horizontal scroll containment (`overflow-x: auto`),
 which would otherwise push the whole page sideways on a narrow screen
 instead of scrolling just the table; both are fixed.
 
+## 17. Outbound email failures are no longer silent
+
+Reported symptom: applicants complete registration successfully but
+never receive the confirmation email. There's no way for me to inspect
+your live Render logs or SMTP credentials directly, so rather than
+guess at a single root cause, every place a failure could hide was
+hardened so you can now diagnose it yourself in under a minute:
+
+- `services/email_service.py`'s `send_email()` (and everything built on
+  it — confirmation emails, password reset emails) now returns
+  `{"sent": bool, "reason": str | None}` instead of silently swallowing
+  every failure into a Python log line on Render that's easy to never
+  check. A Gmail authentication failure is now specifically detected and
+  explained (`SMTPAuthenticationError` → "this almost always means
+  SMTP_PASSWORD is a regular account password instead of a 16-character
+  App Password").
+- `blueprints/registration.py` and `blueprints/auth.py` now log the
+  outcome of every send attempt — success or failure, with the exact
+  reason — to **SystemLogs** (`CONFIRMATION_EMAIL_SENT` /
+  `CONFIRMATION_EMAIL_FAILED`, `PASSWORD_RESET_REQUESTED` /
+  `PASSWORD_RESET_EMAIL_FAILED`). Since SystemLogs is the sheet you
+  already check, the exact reason a given applicant's email didn't send
+  is now sitting right there.
+- The registration response now includes `emailSent: true/false`.
+- Admin Dashboard gained a **Diagnostics** tab with **Send Test Email** —
+  fires one email through the exact same SMTP path as a real
+  registration and shows the exact failure reason immediately, with no
+  need to submit a full test registration to find out whether email
+  works at all.
+
+**Most likely causes, in probability order** (all now diagnosable via
+the tools above): `EMAIL_ENABLED` left `false`; `SMTP_USERNAME` /
+`SMTP_PASSWORD` never set in Render's environment at all; a regular
+Gmail password used instead of a 16-character **App Password** (Gmail
+rejects plain passwords for SMTP — 2-Step Verification must be on first);
+`MAIL_FROM_ADDRESS` left blank when `SMTP_USERNAME` is also blank
+(nothing to send *from*); the email arriving but landing in spam. See
+`docs/SETUP_GUIDE.md`, Step 10 ("Set up outbound email"), for the
+step-by-step fix for each.
+
+## 18. Monnify: real payment verification, reserved-account cleanup, and three bugs fixed along the way
+
+Implementing the requested full Monnify setup guide meant actually
+verifying this module against Monnify's current API documentation
+line-by-line (not simply trusting the placeholder code from the first
+build) — and it caught three real, separate bugs:
+
+1. **`create_monnify_reserved_account` had a dead line that would have
+   crashed it** the moment Monnify was ever enabled — `body["accountNumber"
+   in body and body or body]` — indexing a dictionary by itself, which
+   Python can't do (dicts aren't hashable). Removed; it was unused dead
+   code left over from an earlier draft.
+2. **The payment-verification function called an endpoint that doesn't
+   exist** — `/api/v2/transactions/{reference}` — a mix-up between two
+   *different* Monnify payment products. This app uses **Customer
+   Reserved Accounts** (a dedicated account number generated per
+   applicant); the endpoint that was called belongs to Monnify's
+   separate "Initialize Transaction" checkout flow, which this app
+   doesn't use at all. Rewritten as `get_reserved_account_transactions()`
+   (the correct endpoint for this app's flow,
+   `GET /api/v1/bank-transfer/reserved-accounts/transactions`) plus
+   `has_received_payment()`, which checks that a transaction with
+   `paymentStatus: "PAID"` exists for that reference AND (when an
+   expected amount is supplied) that its amount is within ₦1 of what was
+   expected — closing a trivial-underpayment loophole, not just checking
+   "did *any* money arrive."
+3. **Registration never actually verified payment at all** — the
+   `Payment Status: "Paid"` written to the Registrations sheet was
+   simply whatever the *browser* sent in the request body, trivially
+   spoofable by anyone who opened devtools. When `MONNIFY_ENABLED=true`,
+   `blueprints/registration.py` now calls `has_received_payment()`
+   before writing the registration; if payment isn't confirmed yet, it
+   returns a 402 asking the applicant to wait a little (bank transfers
+   can take a few minutes) and resubmit — the existing frontend's retry
+   flow (the "Submit Final Application" button reappearing on error)
+   already handles this with no frontend changes needed. **When Monnify
+   is OFF** (the default), this check doesn't run — payment is still
+   verified by a human reviewing the uploaded receipt against the static
+   account, exactly as the original project worked.
+
+**The "paused temporary account"** you asked about is what Monnify
+itself calls **deallocating** a reserved account — an immediate,
+irreversible retirement of that one account number (there's no
+"pause and later resume"; a deallocated account cannot be reactivated).
+Since this app creates a brand-new reserved account per registration
+attempt (never reused across students), `deallocate_monnify_reserved_
+account()` is called automatically right after a registration completes
+successfully with Monnify enabled — this keeps the Monnify dashboard
+from accumulating thousands of stale, no-longer-watched accounts over
+time, and stops anyone being able to transfer into that same account
+number again later. It's best-effort and never raises — a cleanup
+failure here can never affect an applicant whose registration already
+succeeded.
+
+**A disclosed trade-off:** Monnify's own recommended production pattern
+for confirming reserved-account payments is **webhooks** (Monnify calls
+your server the moment a transfer lands), not polling. This build uses
+polling (`has_received_payment`, called once at submission time) because
+it needs no publicly-reachable webhook endpoint or signature-verification
+setup to get working, and it fits this app's existing "wait, then submit"
+UX with zero frontend changes. It's less instantaneous than a webhook
+(a payment that lands exactly as the applicant clicks Submit might need
+one retry a few seconds later) but is simpler to stand up and verify.
+Add a webhook handler later if you want payments confirmed the instant
+they land rather than at submission time.
+
+**Verification note:** every endpoint path and response shape above was
+checked against Monnify's own current API documentation and tested
+against realistic mock responses matching their documented shapes
+exactly (both bugs #1 and #2 were caught this way). This sandboxed build
+environment cannot reach `sandbox.monnify.com` directly (outbound
+network access here is allow-listed to a small set of package-registry
+domains and doesn't include it), so the live sandbox round-trip itself
+could not be executed from here — please do a real end-to-end test
+(Setup Guide's Monnify section, Step 3) once this is running locally or
+on Render, both of which have normal outbound network access.
+
+## 19. Local `.env` loading was never actually wired up
+
+A real gap, found while testing the Monnify setup end-to-end:
+`python-dotenv` was listed in `requirements.txt` and `docs/SETUP_GUIDE.md`
+documented "copy `.env.example` to `.env` and run `python wsgi.py`" — but
+nothing ever called `load_dotenv()`. `.env` was silently ignored; only
+variables already exported in the shell's own environment ever reached
+the app. This affected **every** environment variable for local
+development, not just Monnify's — it's simply what surfaced it. Fixed in
+`wsgi.py`: `load_dotenv()` now runs at module import time, before
+`app.config`'s `Config` class body reads `os.environ`. Confirmed working
+end-to-end (a fresh subprocess with no pre-set environment variables
+correctly picks up every value from `backend/.env`). Harmless on Render,
+which has no `.env` file and injects real environment variables directly.
+
+## 20. Student ID month code: the intake's month, not today's date — and now unpadded
+
+Two related fixes to `services/ids.py`, both from explicit instruction:
+
+- **The month code is now the intake's plain calendar month number** —
+  July → `7`, October → `10`, December → `12` — replacing Revision 1's
+  single-character scheme (`1`-`9` then `O`/`N`/`D`) that was chosen to
+  hold the ID to a fixed 11 characters. That fixed-length property is
+  gone as a deliberate, requested trade-off: a July-intake ID is 11
+  characters (`AHCT2670001`); an October-intake one is 12
+  (`AHCT26100001`). Verified directly against both examples given.
+- **There is now no code path where today's date can influence a
+  Student ID at all.** The previous version *did* already read the
+  month from the selected Intake Mode's label in the normal case, but
+  silently fell back to the server's current calendar month/year if that
+  label didn't parse — e.g. an admin-entered Intake Mode label (via the
+  Admin Dashboard's free-text "Add New Intake" field) that didn't match
+  the expected "Month YYYY" shape. That fallback is removed entirely:
+  `parse_intake_year_month()` now raises a clear `IntakeLabelUnparseable`
+  error naming the exact bad label instead, caught specifically in
+  `blueprints/registration.py`, which logs the technical detail to
+  SystemLogs (`INTAKE_LABEL_UNPARSEABLE`) and shows the applicant an
+  apologetic message rather than either a raw exception or — worse — a
+  silently wrong Student ID.
+
+## 21. Intake-mode loading indicator
+
+`apply.html`'s Stage 1 now shows a spinner and "Loading Active Intakes,
+Please wait..." while `GET /api/public/config` is in flight, instead of
+an empty area with nothing to indicate anything is happening. Handled in
+all three outcomes: hidden once intakes render successfully, hidden (with
+a red error message in its place) if the config fetch fails, and hidden
+when every intake turns out to be closed (the existing "Applications Are
+Currently Closed" state).
+

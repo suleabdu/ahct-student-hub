@@ -230,3 +230,36 @@ def update_intake():
 
     ext.security.log_action(ext.sheets_client, session["actorId"], CONFIG.ROLES["ADMIN"], "INTAKE_UPDATED", f"Label={label}")
     return jsonify(success=True)
+
+
+# --------------------------------------------------------------------------
+# Email diagnostics
+# --------------------------------------------------------------------------
+
+@admin_bp.post("/email/test")
+def send_test_email():
+    """Sends a one-off test email through the exact same code path (and
+    exact same SMTP credentials) as every other outbound email, so a
+    broken setup can be confirmed and diagnosed in seconds from the Admin
+    Dashboard's "Diagnostics" tab, instead of needing a full registration
+    round-trip. Also logs the attempt to SystemLogs either way."""
+    payload = request.get_json(force=True, silent=True) or {}
+    try:
+        session = _require_session()
+    except PermissionError as e:
+        return jsonify(success=False, error=str(e)), 401
+
+    to_email = str(payload.get("to", "")).strip()
+    if not to_email:
+        return jsonify(success=False, error="Please enter an email address to send the test to."), 400
+
+    result = ext.email_service.send_test_email(to_email)
+    ext.security.log_action(
+        ext.sheets_client, session["actorId"], CONFIG.ROLES["ADMIN"],
+        "TEST_EMAIL_SENT" if result["sent"] else "TEST_EMAIL_FAILED",
+        f'To={to_email}' + ("" if result["sent"] else f'; Reason={result["reason"]}'),
+    )
+
+    if not result["sent"]:
+        return jsonify(success=False, error=result["reason"]), 502
+    return jsonify(success=True)

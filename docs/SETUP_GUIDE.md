@@ -128,9 +128,13 @@ deployed anywhere; they're only for this one-time local step.
    python3 -m venv venv
    source venv/bin/activate   # Windows: venv\Scripts\activate
    pip install -r requirements.txt
-   cp .env.example .env
    ```
-2. Open `.env` and fill in:
+   **Note:** this project already includes a `backend/.env` with the
+   Monnify **sandbox** test credentials pre-filled (see "Setting up
+   Monnify" below) — don't run `cp .env.example .env` or you'll
+   overwrite it; just open the existing `.env` directly. Starting from
+   scratch instead? `.env.example` is still there as a template.
+2. Open `.env` and fill in the rest:
    - `SECRET_KEY` / `JWT_SECRET` — any long random strings (e.g. run
      `python3 -c "import secrets; print(secrets.token_hex(32))"` twice).
    - `SPREADSHEET_ID` — from Step 1.2.
@@ -243,7 +247,12 @@ notification emails via SMTP. Using Gmail:
    - `ADMIN_EMAIL` = where you want a copy of every registration/chat
      notification sent
 4. Redeploy (Render redeploys automatically when you save environment
-   variable changes) and test by submitting a registration.
+   variable changes), then use **Admin Dashboard → Diagnostics → Send
+   Test Email** to confirm delivery in seconds — no need to submit a
+   full test registration just to check whether email works. If it
+   fails, the error shown names the exact problem (and the same message
+   is what gets logged to SystemLogs for every real failed send — see
+   `docs/ARCHITECTURE_AND_DECISIONS.md`, Section 17).
 
 Any other SMTP provider works too — just set `SMTP_HOST`/`SMTP_PORT`
 accordingly. This can be the same Google account as Steps 1–3, or a
@@ -302,18 +311,111 @@ setup.
     dates (or add a new one) and confirm it updates immediately on the
     public Apply form.
 
-## Optional: live payments with Monnify
+## Setting up Monnify (live payments)
 
-By default, the Payment stage shows a **static** bank account (same
-behaviour the original project had). To switch to live Monnify reserved
-accounts:
+By default, the Payment stage shows a **static** bank account and a
+human at AH Consult Ltd verifies each payment by eye against the
+uploaded receipt — exactly how the original project worked. This
+section switches that to **live, automatically-verified payments**
+using Monnify's Reserved Accounts: each applicant gets their own
+one-time account number, and the backend checks Monnify directly to
+confirm the money actually arrived before finalizing the registration —
+see `docs/ARCHITECTURE_AND_DECISIONS.md`, Section 18, for exactly how
+that check works and its one known trade-off (polling, not webhooks).
 
-1. Get API credentials from your [Monnify](https://monnify.com) dashboard.
-2. Set, in Render's environment: `MONNIFY_ENABLED=true`,
-   `MONNIFY_API_KEY`, `MONNIFY_SECRET_KEY`, `MONNIFY_CONTRACT_CODE`, and
-   `MONNIFY_BASE_URL` (use the sandbox URL until you're ready to go
-   live, then switch to the production one).
-3. Redeploy. `services/payment_service.py` handles the rest.
+### Step M1 — Get your Monnify credentials
+
+1. Sign up at [monnify.com](https://monnify.com) (or log in if AH
+   Consult Ltd already has an account).
+2. In the dashboard, go to **Settings → API Keys** (or similar — Monnify's
+   exact menu wording changes occasionally) to find:
+   - **API Key** (starts with `MK_TEST_` in sandbox, `MK_PROD_` in
+     production)
+   - **Secret Key**
+3. Go to **Settings → Contract** (or **Business**) to find your
+   **Contract Code** — a numeric ID identifying your business on Monnify.
+4. Sandbox and production are **separate credential sets** — sandbox
+   credentials only work against `https://sandbox.monnify.com`,
+   production ones only against `https://api.monnify.com`. Don't mix
+   them.
+
+### Step M2 — Configure and test in sandbox first
+
+Sandbox uses fake money — nothing here touches a real bank account, so
+it's safe to fully test the flow before going live.
+
+Set these (in `backend/.env` for local testing, or Render's Environment
+tab for a deployed test):
+
+```
+MONNIFY_ENABLED=true
+MONNIFY_API_KEY=MK_TEST_...
+MONNIFY_SECRET_KEY=...
+MONNIFY_CONTRACT_CODE=...
+MONNIFY_BASE_URL=https://sandbox.monnify.com
+```
+
+Restart the backend (or let Render redeploy), then:
+
+1. Submit a test application through to the Payment stage. The account
+   number shown should now come from Monnify (a real, freshly-created
+   reserved account) instead of the static fallback — check
+   `/api/public/payment-account?reference=...` directly if you want to
+   confirm.
+2. **Fund it with a sandbox test transfer.** Monnify's dashboard has a
+   sandbox transfer simulator (under Sandbox/Testing tools) — use it to
+   simulate a transfer of the exact amount shown into that account
+   number.
+3. Click through the rest of the form and submit. With the payment
+   simulated, `has_received_payment()` should find it and the
+   registration should complete normally. If you submit *without*
+   simulating the transfer first, you should see: "We couldn't confirm
+   your payment yet..." — that's the verification working correctly,
+   not a bug.
+4. Check the Monnify dashboard's Reserved Accounts list — the account
+   used in step 3 should show as deallocated shortly after a successful
+   submission (Section 18's "paused temporary account" cleanup).
+
+### Step M3 — Go live
+
+1. Switch to your **production** API Key, Secret Key, and Contract Code
+   from Monnify (Step M1, production tab instead of sandbox).
+2. Set `MONNIFY_BASE_URL=https://api.monnify.com`.
+3. Update these in Render's environment (never commit real production
+   secrets to `backend/.env` if that file ever leaves your machine —
+   it's git-ignored, but treat it as sensitive regardless) and redeploy.
+4. Do one small real test registration with a real transfer before
+   announcing it's live.
+
+### Understanding the "temporary account" and what "pausing" it means
+
+Every applicant gets their **own** reserved account number, generated
+fresh for that one registration attempt (never reused across
+students) — this is what the Payment stage calls a "temporary account."
+Monnify's own term for retiring one isn't "pause," it's **deallocate** —
+and it's immediate and permanent: once deallocated, that exact account
+number can never be reactivated (a later registration simply gets a
+different new one). This app deallocates an applicant's reserved
+account automatically, right after their registration completes
+successfully — you don't need to do this by hand. This keeps Monnify's
+Reserved Accounts list from growing forever with thousands of
+one-time, no-longer-needed accounts.
+
+If you ever need to deallocate one manually (e.g. an abandoned
+application whose account you want cleaned up early), Monnify's
+dashboard has a "Deallocate" action on each reserved account — or call
+`DELETE /api/v1/bank-transfer/reserved-accounts/reference/{accountReference}`
+directly (see `services/payment_service.py`'s
+`deallocate_monnify_reserved_account`).
+
+### Troubleshooting Monnify specifically
+
+| Symptom | Likely cause |
+|---|---|
+| Payment stage still shows the static account after setting `MONNIFY_ENABLED=true` | Env vars not actually applied yet — confirm you redeployed/restarted, and check `/api/public/payment-account` directly for an error message |
+| "We couldn't confirm your payment yet" even after a real transfer | Bank transfers can take a few minutes to reflect — wait and resubmit. If it persists, confirm the amount transferred exactly matches the total fee shown (the check rejects amounts more than ₦1 off) |
+| A 502 error mentioning `auth/login` or a connection failure | `MONNIFY_API_KEY`/`MONNIFY_SECRET_KEY` wrong, or `MONNIFY_BASE_URL` doesn't match which credential set you're using (sandbox creds against the production URL, or vice versa) |
+| Reserved accounts piling up in the Monnify dashboard | Only happens if registrations are failing *after* payment lands but *before* the deallocate step (a rare edge case) — check SystemLogs for `TUTOR_CODE_NOT_FOUND`-style entries around that time, or deallocate manually (above) |
 
 ## Ongoing notes
 

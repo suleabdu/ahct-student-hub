@@ -8,9 +8,16 @@ carried over from the original project close to verbatim (same subject
 lines, same visual structure) so the emails a registrant/tutor receives
 look the way AH Consult Ltd already expects.
 
-If EMAIL_ENABLED is false or SMTP credentials are missing, send_email logs
-a warning and returns without raising — registration/etc. should never
-fail just because mail isn't configured yet in a fresh deployment.
+FAILURES ARE NEVER SILENT: every send_* method returns a result dict,
+{"sent": bool, "reason": str | None} — "reason" is None on success, or a
+short, specific explanation on failure ("EMAIL_ENABLED is false", "SMTP
+credentials not configured", or the actual SMTP exception message, e.g.
+an authentication failure). Registration/etc. still never FAILS just
+because mail isn't configured or a send didn't go through — callers
+(blueprints/registration.py) log this result to SystemLogs either way,
+so "why didn't the applicant get an email" is answerable by reading
+SystemLogs directly, instead of only a Python log line on Render that
+may never get checked. See docs/ARCHITECTURE_AND_DECISIONS.md, Section 17.
 ==============================================================================
 """
 
@@ -27,12 +34,21 @@ class EmailService:
         self.config = config
 
     def send_email(self, to_email, subject, html_body, cc=None, reply_to=None):
+        """Returns {"sent": bool, "reason": str | None}. Never raises —
+        every failure mode (disabled, unconfigured, or an actual SMTP
+        error) is captured into "reason" instead."""
         if not self.config.EMAIL_ENABLED:
-            logger.info("EMAIL_ENABLED is false — skipping send to %s: %s", to_email, subject)
-            return
+            reason = "EMAIL_ENABLED is false"
+            logger.info("%s — skipping send to %s: %s", reason, to_email, subject)
+            return {"sent": False, "reason": reason}
         if not self.config.SMTP_USERNAME or not self.config.SMTP_PASSWORD:
-            logger.warning("SMTP credentials not configured — skipping send to %s: %s", to_email, subject)
-            return
+            reason = "SMTP_USERNAME/SMTP_PASSWORD not configured"
+            logger.warning("%s — skipping send to %s: %s", reason, to_email, subject)
+            return {"sent": False, "reason": reason}
+        if not to_email:
+            reason = "No recipient email address was provided"
+            logger.warning("%s — skipping send: %s", reason, subject)
+            return {"sent": False, "reason": reason}
 
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
@@ -54,8 +70,34 @@ class EmailService:
                     server.starttls()
                 server.login(self.config.SMTP_USERNAME, self.config.SMTP_PASSWORD)
                 server.sendmail(self.config.MAIL_FROM_ADDRESS, recipients, msg.as_string())
-        except Exception:
+            return {"sent": True, "reason": None}
+        except smtplib.SMTPAuthenticationError as e:
+            reason = (
+                f"SMTP login was rejected ({e.smtp_code}: {e.smtp_error!r}). For Gmail, this almost always "
+                "means SMTP_PASSWORD is a regular account password instead of a 16-character App Password — "
+                "see docs/SETUP_GUIDE.md, Step 10."
+            )
+            logger.exception("SMTP authentication failed sending to %s", to_email)
+            return {"sent": False, "reason": reason}
+        except Exception as e:
+            reason = f"{type(e).__name__}: {e}"
             logger.exception("Failed to send email to %s", to_email)
+            return {"sent": False, "reason": reason}
+
+    def send_test_email(self, to_email):
+        """Used by the Admin Dashboard's "Send Test Email" diagnostic
+        (blueprints/admin.py's /email/test) so a broken SMTP setup can be
+        confirmed and diagnosed in seconds, without needing a full
+        registration round-trip."""
+        html = (
+            "<div style=\"font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#374151; "
+            "max-width: 480px; margin: 0 auto; padding: 30px; border: 1px solid #e5e7eb; border-radius: 12px;\">"
+            "<h2 style=\"color:#ea580c; margin:0 0 16px 0;\">AH STUDENT HUB</h2>"
+            "<p>This is a test email from your AH Student Hub backend — if you're reading this, "
+            "outbound email is configured correctly.</p>"
+            "</div>"
+        )
+        return self.send_email(to_email, "AH Student Hub — Test Email", html)
 
     # --- Password reset ----------------------------------------------------
 
@@ -72,7 +114,7 @@ class EmailService:
           <p style="font-size: 13px; color: #6b7280;">If you didn't request this, you can safely ignore this email — your password will stay unchanged.</p>
         </div>
         """
-        self.send_email(to_email, "Reset Your AH Student Hub Password", html)
+        return self.send_email(to_email, "Reset Your AH Student Hub Password", html)
 
     # --- Registration confirmation ------------------------------------------
 
@@ -123,7 +165,7 @@ class EmailService:
         </div>
         """
         cc = self.config.ADMIN_EMAIL
-        self.send_email(form_data.get("email"), subject, html, cc=cc, reply_to=self.config.ADMIN_EMAIL)
+        return self.send_email(form_data.get("email"), subject, html, cc=cc, reply_to=self.config.ADMIN_EMAIL)
 
     # --- Chat-style student message notification (Messages sheet) ---------
 
@@ -134,4 +176,4 @@ class EmailService:
             f'<p style="padding:12px;background:#f8fafc;border-left:4px solid #ea580c;">{message_text}</p>'
             f"<p>Reply directly to this email to respond — it will go straight to the student's inbox.</p>"
         )
-        self.send_email(self.config.ADMIN_EMAIL, subject, html, reply_to=student_email)
+        return self.send_email(self.config.ADMIN_EMAIL, subject, html, reply_to=student_email)

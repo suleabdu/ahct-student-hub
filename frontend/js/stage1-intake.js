@@ -8,7 +8,10 @@
 function renderIntakeCards() {
   const container = document.getElementById('intakeCardGroup');
   const closedMsg = document.getElementById('allIntakesClosedMessage');
+  const loadingIndicator = document.getElementById('intakeLoadingIndicator');
   const anyOpen = INTAKE_MODES.some(function (m) { return m.isOpen; });
+
+  loadingIndicator.classList.add('hidden');
 
   if (!anyOpen) {
     container.classList.add('hidden');
@@ -17,6 +20,7 @@ function renderIntakeCards() {
     return;
   }
 
+  container.classList.remove('hidden');
   container.innerHTML = INTAKE_MODES.map(function (m) {
     if (!m.isOpen) {
       return `

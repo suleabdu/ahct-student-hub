@@ -8,7 +8,7 @@ Python equivalent of the registration half of Code.gs. Three endpoints:
   POST /api/public/register           -> processRegistration equivalent
 
 Stage 1 (Intake Mode) / Stage 2 (Application) / Stage 3 (Payment) / receipt
-are all frontend concerns (frontend/index.html) — this blueprint only
+are all frontend concerns (frontend/apply.html) — this blueprint only
 implements Stage 4's actual write, plus the config the frontend needs to
 render Stages 1-3 without hardcoding anything the backend could drift from.
 ==============================================================================
@@ -18,6 +18,7 @@ from flask import Blueprint, request, jsonify
 
 from .. import extensions as ext
 from ..config import CONFIG
+from ..services.ids import IntakeLabelUnparseable
 from ..services import ids as id_service
 
 registration_bp = Blueprint("registration", __name__, url_prefix="/api/public")
@@ -160,6 +161,24 @@ def register():
 
         total_fee = sum(c["fee"] for c in enrolled_courses)
 
+        # --- Verify payment actually happened, when Monnify is live ---
+        # Without this, "Payment Status": "Paid" below is just whatever
+        # the CLIENT sent — trivially spoofable. When Monnify is
+        # configured, this replaces that blind trust with a real check
+        # against the reserved account the applicant was shown on Stage
+        # 3. (When Monnify is OFF, payment is still verified by a human
+        # reviewing the uploaded receipt against the static account —
+        # the original project's model — so no check happens here.)
+        payment_reference = form_data.get("paymentReference", "")
+        if CONFIG.MONNIFY_ENABLED:
+            from ..services.payment_service import has_received_payment
+            if not payment_reference or not has_received_payment(CONFIG, payment_reference, expected_amount=total_fee):
+                return jsonify(
+                    success=False,
+                    error="We couldn't confirm your payment yet. Bank transfers can take a few minutes to reflect — "
+                          "please wait a little and try submitting again.",
+                ), 402
+
         # --- Passport photo and payment receipt uploads ---
         passport_url = "No File Uploaded"
         if form_data.get("passportData"):
@@ -247,9 +266,43 @@ def register():
         )
 
         login_url = f"{CONFIG.FRONTEND_URL}/student-login.html"
-        ext.email_service.send_confirmation_email(form_data, student_id, enrolled_courses, total_fee, login_url)
+        email_result = ext.email_service.send_confirmation_email(form_data, student_id, enrolled_courses, total_fee, login_url)
+        if email_result["sent"]:
+            ext.security.log_action(ext.sheets_client, student_id, CONFIG.ROLES["STUDENT"], "CONFIRMATION_EMAIL_SENT", f'To={form_data.get("email")}')
+        else:
+            # Never blocks the registration itself — a student's data is
+            # already safely written above — but this is exactly the
+            # entry to check in SystemLogs when "the applicant didn't
+            # get an email" is reported. See
+            # docs/ARCHITECTURE_AND_DECISIONS.md, Section 17.
+            ext.security.log_action(
+                ext.sheets_client, student_id, CONFIG.ROLES["STUDENT"], "CONFIRMATION_EMAIL_FAILED",
+                f'To={form_data.get("email")}; Reason={email_result["reason"]}',
+            )
 
-        return jsonify(success=True, regId=student_id)
+        # --- Retire the one-time Monnify reserved account, now that it's served its purpose ---
+        if CONFIG.MONNIFY_ENABLED and payment_reference:
+            from ..services.payment_service import deallocate_monnify_reserved_account
+            deallocate_monnify_reserved_account(CONFIG, payment_reference)
+
+        return jsonify(success=True, regId=student_id, emailSent=email_result["sent"])
+
+    except IntakeLabelUnparseable as e:
+        # A configuration problem (an Admin-entered Intake Mode label
+        # that doesn't parse), not a fault in the applicant's submission
+        # — logged distinctly so it shows up clearly in SystemLogs rather
+        # than looking like just another failed registration, and the
+        # applicant gets an apologetic message rather than the raw
+        # technical detail.
+        ext.security.log_action(
+            ext.sheets_client, "", CONFIG.ROLES["STUDENT"], "INTAKE_LABEL_UNPARSEABLE",
+            f'{e} | Submitted by: {form_data.get("email", "")}',
+        )
+        return jsonify(
+            success=False,
+            error="We couldn't process this intake right now due to a configuration issue on our end. "
+                  "Please contact AH Consult Ltd, or try again after choosing a different intake mode.",
+        ), 500
 
     except Exception as e:
         return jsonify(success=False, error=str(e)), 500
