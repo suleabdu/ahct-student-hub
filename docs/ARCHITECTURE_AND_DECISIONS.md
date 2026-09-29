@@ -529,3 +529,64 @@ a red error message in its place) if the config fetch fails, and hidden
 when every intake turns out to be closed (the existing "Applications Are
 Currently Closed" state).
 
+## 22. Root-caused: "Could not load the application form" + admin login "Failed to Fetch"
+
+Both symptoms reported together are, almost always, **one single
+misconfiguration** — every page (the public form, every login page,
+every dashboard) calls the API through the exact same `API_BASE_URL` in
+`frontend/js/config.js`, so if that value is wrong, every page fails the
+same way at once. Reproduced directly (a headless run of the real
+`apply.html` against a simulated unreachable backend) to confirm the
+exact error text matches what was reported, then fixed in three places:
+
+1. **A proactive, unmissable warning was the single highest-value fix.**
+   The most common way to cause this is deploying to Netlify without
+   updating `API_BASE_URL` away from its local-dev default
+   (`http://localhost:5000`) — every visitor's browser then tries to
+   reach an address that doesn't exist for them, or gets silently
+   blocked as "mixed content" (a browser will never let an `https://`
+   page call an `http://` address), and either way the browser hands
+   JavaScript nothing but a bare, unhelpful `TypeError: Failed to
+   fetch`. `js/api.js` now checks for exactly this pattern once, at
+   load — the page's own origin isn't `localhost`, but `API_BASE_URL`
+   still points at `localhost` — and shows a fixed red banner across the
+   top of the page naming the problem and the one file to fix. Verified
+   it fires for the misconfigured case, and specifically verified it
+   does **not** fire for a correctly-configured deployment or genuine
+   local development — a check that's wrong 1% of the time would be
+   worse than no check at all.
+2. **The raw "Failed to fetch" is no longer shown to anyone.** Every
+   `Api.call()`/`Api.get()` failure now runs through
+   `friendlyNetworkErrorMessage_()`, which recognises that exact browser
+   string (and Firefox/Safari's equivalents) and replaces it with an
+   explanation of what it usually means, instead of surfacing raw
+   browser/JS internals as if they were the actual problem.
+3. **A second, independent cause was found and fixed while testing:**
+   `CORS_ORIGINS` matching was silently broken by a trailing slash — a
+   very easy mistake since browser address bars often display one, and
+   pasting straight from there into Render's environment produces
+   `https://your-site.netlify.app/`, which never matches the
+   `Origin: https://your-site.netlify.app` header a browser actually
+   sends (no trailing slash, ever). Confirmed directly: the old code
+   rejected the request in this case; the fix (stripping a trailing `/`
+   from each configured origin in `app/__init__.py`) accepts it. This
+   produces the exact same symptom as cause #1 (the browser again hands
+   JavaScript nothing but "Failed to fetch," since a CORS-rejected
+   request never completes) — which is exactly why they're easy to
+   confuse and why `/api/health` (next point) matters.
+4. **`/api/health` now reports its own `corsOrigins`, `monnifyEnabled`,
+   and `emailEnabled`.** Since this URL is on the backend itself,
+   visiting it directly in a browser completely bypasses the frontend —
+   the fastest way to tell "the backend is fine, the frontend is
+   misconfigured" apart from "the backend itself is unreachable or
+   misconfigured," which otherwise look identical to a visitor.
+
+**A note on how this was actually debugged**, since it's a useful
+pattern for anything similar in the future: rather than only reasoning
+about the code, the real `apply.html` and `staff-login.html` were loaded
+in a headless browser environment (jsdom) with `fetch` deliberately
+mocked to fail exactly like the reported symptom, which reproduced the
+precise error text from the report and confirmed each fix against the
+real files — not just a description of what they should do.
+
+

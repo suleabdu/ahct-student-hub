@@ -261,9 +261,13 @@ setup.
 
 ## Step 11 — Deploy the frontend to Netlify
 
-1. First, point the frontend at your live backend: edit
+1. **First, point the frontend at your live backend** — this is the
+   single most common thing to forget, and every page fails identically
+   if it's missed (see the Troubleshooting entry below). Edit
    `frontend/js/config.js`, set `API_BASE_URL` to your Render URL from
-   Step 9.4 (no trailing slash), commit, and push to GitHub.
+   Step 9.4 (no trailing slash), commit, and push to GitHub. If you skip
+   this, the app will now show a red banner at the top of every page
+   saying exactly that, rather than failing silently.
 2. Go to [Netlify](https://app.netlify.com) → **Add new site → Import an
    existing project** → connect the same GitHub repo.
 3. Set:
@@ -440,7 +444,7 @@ directly (see `services/payment_service.py`'s
 | `get_refresh_token.py` says it couldn't find `client_secret.json` | It must be saved inside the `setup/` folder, named exactly `client_secret.json` (Step 2.5) |
 | Google shows "Access blocked: this app's request is invalid" or similar during Step 3 | The OAuth consent screen (Step 2.4) is missing a required field, or the Sheets/Drive APIs (Step 2.3) aren't enabled yet |
 | `get_refresh_token.py` runs but doesn't print a `GOOGLE_REFRESH_TOKEN` line | This Google account already authorized this app before, so Google didn't reissue a refresh token. Go to [myaccount.google.com/permissions](https://myaccount.google.com/permissions), remove this app's access, and run the script again |
-| Frontend shows "Could not load the application form" | `API_BASE_URL` in `frontend/js/config.js` doesn't match your backend's real URL, or `CORS_ORIGINS` on the backend doesn't include your frontend's origin |
+| Frontend shows "Could not load the application form" **and/or** admin/staff login shows "Failed to Fetch" — on every page, not just one | **This is almost always one misconfiguration**, since every page hits the same API_BASE_URL: (1) `frontend/js/config.js`'s `API_BASE_URL` was never updated from its local-dev default (`http://localhost:5000`) before deploying to Netlify — the app now shows a red banner at the top of every page telling you exactly this, if it's the cause; (2) `CORS_ORIGINS` on the backend doesn't include your exact frontend origin (check `https://your-backend.onrender.com/api/health` directly — its `corsOrigins` field shows exactly what's currently configured); or (3) the backend isn't actually up — check that same `/api/health` URL loads at all. Fix whichever of the three it is, redeploy, and it should clear on every page at once |
 | Registration email never arrives | `EMAIL_ENABLED=false`, or Gmail app password wrong/missing 2-Step Verification (Step 10) |
 | "This is taking longer than expected" on first login after deploy | Normal on Render's free tier waking from sleep — wait ~30–60s and click Try Again |
 | Two people register at the exact same instant and something looks racy | See `docs/ARCHITECTURE_AND_DECISIONS.md`, Section 9 — make sure Render is running exactly 1 worker (the default `gunicorn_config.py` setting) |

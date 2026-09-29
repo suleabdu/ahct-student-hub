@@ -27,7 +27,14 @@ def create_app(config=CONFIG):
     # client shared by every request) rather than per-request.
     ext.init_services(config)
 
-    origins = "*" if config.CORS_ORIGINS.strip() == "*" else [o.strip() for o in config.CORS_ORIGINS.split(",")]
+    # Trailing slashes are a common copy-paste mistake (pasting straight
+    # from a browser's address bar, which often shows one) and cause a
+    # silent, total CORS mismatch — https://example.com/ never matches a
+    # request whose Origin header is https://example.com (browsers never
+    # send a trailing slash in Origin) — so every request would be
+    # blocked with the browser's opaque "Failed to fetch", with nothing
+    # in this app's own logs to explain why. Stripped defensively here.
+    origins = "*" if config.CORS_ORIGINS.strip() == "*" else [o.strip().rstrip("/") for o in config.CORS_ORIGINS.split(",")]
     CORS(app, resources={r"/api/*": {"origins": origins}})
 
     from .blueprints.common import common_bp
