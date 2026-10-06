@@ -23,7 +23,7 @@ Deno.serve(async () => {
       const { data: a } = await db.from("applications").select("*, intakes(label), application_courses(course_code), profiles(full_name,phone)").eq("id", j.application_id).single();
       const f = a.form_data ?? {};
       const row = [a.id, a.student_id ?? "", f.surname ? `${f.surname} ${f.firstName}`.trim() : a.profiles?.full_name ?? "", f.phone ?? a.profiles?.phone ?? "",
-        a.intakes?.label, (a.package_code ? "[FULL PACKAGE] " : "") + a.application_courses.map((c: any) => c.course_code).join(", "), a.total_ngn, a.status, a.created_at, a.paid_at ?? "", a.submitted_at ?? ""];
+        a.intakes?.label, (a.package_code ? "[FULL PACKAGE] " : "") + a.application_courses.map((c: any) => c.course_code).join(", "), a.total_ngn, a.status, a.created_at, a.paid_at ?? "", a.submitted_at ?? "", a.payment_claimed_at ?? "", a.payment_review.charAt(0).toUpperCase() + a.payment_review.slice(1)];
       const i = ids.indexOf(a.id);
       const url = i >= 0 ? `https://sheets.googleapis.com/v4/spreadsheets/${SID}/values/Applications!A${i + 1}?valueInputOption=USER_ENTERED`
         : `https://sheets.googleapis.com/v4/spreadsheets/${SID}/values/Applications!A:A:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;

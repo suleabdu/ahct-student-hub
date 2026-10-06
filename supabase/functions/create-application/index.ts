@@ -24,6 +24,7 @@ Deno.serve(safe(async (req) => {
     const { data: p } = await db.from("packages").select("*").eq("code", packageCode).eq("is_active", true).maybeSingle();
     if (!p) return json({ error: "This package is unavailable." }, 400);
     if (p.max_courses && courseCodes.length > p.max_courses) return json({ error: `The package allows up to ${p.max_courses} courses.` }, 400);
+    if (new Set(courses.map((c) => c.category)).size !== courses.length) return json({ error: "With the Full Package you can choose only one course from each level." }, 400);
     pkg = p; total = p.fee_ngn;
   }
   const ref = "AHCT-" + crypto.randomUUID().slice(0, 12).toUpperCase();
