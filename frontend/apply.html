@@ -1,6 +1,117 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Apply | AH Consult CAD Training Programs</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+/* BRAND TOKENS & TAILWIND RECREATION (Matched to apply1.html) */
+:root{--orange:#ea580c;--orange-d:#c2410c;--black:#111827;--ink:#1f2937;--muted:#6b7280;--line:#d1d5db;--bg:#111827;--ok:#16a34a;--err:#dc2626;--font:'Roboto',Arial,sans-serif}
+*{box-sizing:border-box}
+body {
+    margin:0;
+    font-family:var(--font);
+    color:var(--ink);
+    background:linear-gradient(rgba(17, 24, 39, 0.7), rgba(17, 24, 39, 0.7)), url('https://lh3.googleusercontent.com/d/1j4e1Rx5igtD7_4GTuVhz7WlQ3lCyrF68') center/cover fixed;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:40px 16px;
+}
+header {
+    background:#e5e7eb;
+    padding:24px 16px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:16px;
+    width:100%;
+    max-width:640px;
+    border-radius:12px 12px 0 0;
+    border:1px solid var(--line);
+    border-bottom:none;
+    box-shadow:0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+header img { height:56px; filter:drop-shadow(0 4px 3px rgba(0,0,0,0.07)); }
+header span { color:var(--black); font-weight:900; font-size:20px; text-transform:uppercase; letter-spacing:0.05em; text-align:center; }
+main {
+    background:rgba(243, 244, 246, 0.95);
+    backdrop-filter:blur(12px);
+    width:100%;
+    max-width:640px;
+    padding:32px 24px;
+    border-radius:0 0 12px 12px;
+    border:1px solid var(--line);
+    border-top:1px solid var(--line);
+    box-shadow:0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+.steps { display:flex; gap:8px; max-width:400px; margin:0 auto 32px; }
+.steps i { flex:1; height:8px; border-radius:4px; background:var(--line); transition:background 0.3s; }
+.steps i.on { background:var(--orange); }
+.card { background:transparent; border:none; padding:0; }
+h2 { margin:0 0 8px; color:var(--orange); font-size:1.5rem; font-weight:900; text-transform:uppercase; letter-spacing:0.025em; border-bottom:2px solid #fdba74; padding-bottom:8px; }
+p.sub { margin:0 0 24px; color:var(--muted); font-size:14px; max-width:600px; line-height:1.5; }
+label { display:block; font-weight:700; font-size:14px; color:#374151; margin:16px 0 8px; text-transform:uppercase; letter-spacing:0.025em; }
+input, select, textarea { width:100%; padding:12px; background-color:#fff; border:1px solid var(--line); border-radius:8px; font:inherit; color:var(--ink); box-shadow:0 1px 2px 0 rgba(0, 0, 0, 0.05); transition:border-color 0.2s, box-shadow 0.2s; }
+input:focus, select:focus, textarea:focus { outline:none; border-color:var(--orange); box-shadow:0 0 0 3px rgba(234, 88, 12, 0.2); }
+.err { color:var(--err); font-size:12px; margin-top:4px; font-weight:600; min-height:0; }
+input.bad, select.bad, textarea.bad { border-color:var(--err); background-color:#fef2f2; }
+button { background:var(--orange); color:#fff; border:none; border-radius:8px; padding:14px 24px; font:inherit; font-weight:800; text-transform:uppercase; letter-spacing:0.025em; cursor:pointer; width:100%; margin-top:24px; box-shadow:0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); transition:transform 0.2s, background 0.2s; }
+button:hover { background:var(--orange-d); transform:translateY(-2px); }
+button:disabled { opacity:0.6; cursor:not-allowed; transform:none; }
+button.ghost { background:transparent; color:var(--orange); box-shadow:none; margin-top:12px; text-transform:none; font-weight:600; width:auto; padding:8px 16px; }
+button.ghost:hover { background:#fff7ed; transform:none; text-decoration:underline; }
+.course { display:flex; gap:12px; align-items:center; border:1px solid var(--line); border-radius:8px; padding:12px 16px; margin:8px 0; cursor:pointer; background:#fff; transition:border-color 0.2s; }
+.course:hover { border-color:var(--orange); }
+.course input { width:20px; height:20px; accent-color:var(--orange); cursor:pointer; }
+.course b { margin-left:auto; color:var(--black); font-weight:800; }
+.total { display:flex; justify-content:space-between; align-items:center; background:#1f2937; color:#fff; border-radius:8px; margin-top:24px; padding:16px 24px; font-weight:700; text-transform:uppercase; font-size:14px; letter-spacing:0.025em; }
+.total span:last-child { font-size:24px; font-weight:900; color:#fff; }
+.acct { background:#fff7ed; border:1px solid #fed7aa; border-radius:8px; padding:16px; margin:16px 0; }
+.acct strong { font-size:24px; letter-spacing:2px; color:var(--orange); font-family:monospace; font-weight:900; display:block; margin:8px 0; }
+.acct div { color:#374151; font-size:14px; }
+.acct b { color:var(--black); font-size:18px; }
+.notice { padding:16px; border-radius:8px; font-size:14px; margin-top:16px; font-weight:600; }
+.notice.e { background:#fef2f2; color:var(--err); border:1px solid #fecaca; }
+.notice.i { background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; }
+.id { font-size:32px; font-weight:900; color:var(--orange); font-family:monospace; text-align:center; margin:16px 0; padding:16px; background:#fff7ed; border:1px dashed #fdba74; border-radius:8px; }
+[hidden] { display:none !important; }
+</style></head><body>
+<header><img id="logo" alt="" onerror="this.style.display='none'"><span>AH Consult CAD Training Programs</span></header>
+<main><div class="steps" id="steps"><i></i><i></i><i></i><i></i><i></i></div><div id="msg"></div><div class="card" id="view"></div></main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="js/config.js"></script>
+<script>
+function fatal(m){var v=document.getElementById('view');v.innerHTML='<h2>Setup problem</h2><p class="sub" style="color:#b91c1c">'+m+'</p><p class="sub">Open the browser console (F12) for more detail.</p>'}
+window.addEventListener('error',function(e){fatal('Script error: '+e.message)});
+window.addEventListener('unhandledrejection',function(e){fatal('Error: '+((e.reason&&e.reason.message)||e.reason))});
+(function(){
+ var c=window.APPLY_CONFIG;
+ if(!window.supabase)return fatal('The Supabase library did not load (blocked by a Content-Security-Policy, ad blocker, or network). Check Netlify _headers allows https://cdn.jsdelivr.net.');
+ if(!c)return fatal('js/config.js did not load or does not define window.APPLY_CONFIG. Confirm the file exists at frontend/js/config.js and the page path is correct.');
+ if(!/^https:\/\/[a-z0-9]+\.supabase\.co$/.test(c.SUPABASE_URL||''))return fatal('SUPABASE_URL is not set correctly in js/config.js. It must look like https://abcdxyz.supabase.co (no trailing slash, no /rest/v1).');
+ if(!c.SUPABASE_ANON_KEY||c.SUPABASE_ANON_KEY.indexOf('YOUR')===0)return fatal('SUPABASE_ANON_KEY is missing in js/config.js.');
+ startApp();
+})();
+function startApp(){
+const C=window.APPLY_CONFIG,sb=supabase.createClient(C.SUPABASE_URL,C.SUPABASE_ANON_KEY);
+if(C.LOGO_URL)document.getElementById('logo').src=C.LOGO_URL;else document.getElementById('logo').style.display='none';
+const $=s=>document.querySelector(s),view=$('#view'),naira=n=>'₦'+Number(n).toLocaleString();
+const S={app:null,intakes:[],courses:[],picked:new Set(),intakeId:null};
+const STATES=["Abia","Adamawa","Akwa Ibom","Anambra","Bauchi","Bayelsa","Benue","Borno","Cross River","Delta","Ebonyi","Edo","Ekiti","Enugu","FCT","Gombe","Imo","Jigawa","Kaduna","Kano","Katsina","Kebbi","Kogi","Kwara","Lagos","Nasarawa","Niger","Ogun","Ondo","Osun","Oyo","Plateau","Rivers","Sokoto","Taraba","Yobe","Zamfara"];
+function step(n){document.querySelectorAll('#steps i').forEach((e,i)=>e.classList.toggle('on',i<=n))}
+function note(t,k='e'){$('#msg').innerHTML=t?`<div class="notice ${k}" role="alert">${t}</div>`:''}
+function fe(f,errs){document.querySelectorAll('.err').forEach(e=>e.textContent='');document.querySelectorAll('.bad').forEach(e=>e.classList.remove('bad'));
+ for(const k in errs){const el=$('#e_'+k);if(el)el.textContent=errs[k];const i=$('#'+k);if(i)i.classList.add('bad')}
+ const first=document.querySelector('.bad');if(first)first.focus()}
+async function call(fn,body){const {data:{session}}=await sb.auth.getSession();
+ const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),45000);
+ try{const r=await fetch(`${C.SUPABASE_URL}/functions/v1/${fn}`,{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json',apikey:C.SUPABASE_ANON_KEY,Authorization:'Bearer '+session.access_token},body:JSON.stringify(body)});
+  const j=await r.json().catch(()=>({}));return {ok:r.ok,status:r.status,...j}}
+ catch(e){return {ok:false,error:'The server is slow or you are offline. Check your connection and try again. Your progress is saved.'}}finally{clearTimeout(t)}}
+function busy(b,t){b.disabled=true;b.dataset.t=b.textContent;b.textContent=t}function idle(b){b.disabled=false;b.textContent=b.dataset.t}
 
+<<<<<<< HEAD
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -804,16 +915,82 @@
       function formView() {
         step(3); const d = JSON.parse(localStorage.getItem('ahct_draft_' + S.app.id) || '{}'), f = ['surname', 'firstName', 'otherNames', 'phone', 'dob', 'gender', 'state', 'address'];
         view.innerHTML = `<h2>Your details</h2><p class="sub">Payment received. Complete your application.</p>
+=======
+/* STEP 0: account */
+function authView(mode='up'){step(0);const up=mode==='up';
+ view.innerHTML=`<h2>${up?'Create your account':'Sign in'}</h2><p class="sub">${up?'You will use this to continue and track your application.':'Welcome back. Continue your application.'}</p>
+ ${up?`<label for="full_name">Full name</label><input id="full_name" autocomplete="name"><div class="err" id="e_full_name"></div>
+ <label for="phone">Phone number</label><input id="phone" inputmode="tel" autocomplete="tel" placeholder="08012345678"><div class="err" id="e_phone"></div>`:''}
+ <label for="email">Email</label><input id="email" type="email" autocomplete="email"><div class="err" id="e_email"></div>
+ <label for="pw">Password</label><input id="pw" type="password" autocomplete="${up?'new-password':'current-password'}" placeholder="At least 8 characters"><div class="err" id="e_pw"></div>
+ <button id="go">${up?'Create account':'Sign in'}</button><button class="ghost" id="sw">${up?'I already have an account':'Create a new account'}</button>
+ ${up?'':'<button class="ghost" id="fp">Forgot password?</button>'}`;
+ $('#sw').onclick=()=>authView(up?'in':'up');
+ if($('#fp'))$('#fp').onclick=async()=>{const e=$('#email').value.trim();if(!e)return fe(0,{email:'Enter your email first.'});await sb.auth.resetPasswordForEmail(e,{redirectTo:location.href});note('Password reset link sent. Check your inbox and spam folder.','i')};
+ $('#go').onclick=async e=>{const b=e.target,v=id=>($('#'+id)?.value||'').trim(),er={};
+  if(up&&!v('full_name'))er.full_name='Enter your full name.';
+  if(up&&!/^(\+234|0)[789][01]\d{8}$/.test(v('phone').replace(/\s/g,'')))er.phone='Enter a valid Nigerian phone number.';
+  if(!/^\S+@\S+\.\S+$/.test(v('email')))er.email='Enter a valid email address.';
+  if(($('#pw').value||'').length<8)er.pw='Use at least 8 characters.';
+  if(Object.keys(er).length)return fe(0,er);
+  busy(b,'Please wait...');note('');
+  const r=up?await sb.auth.signUp({email:v('email'),password:$('#pw').value,options:{data:{full_name:v('full_name'),phone:v('phone')}}}):await sb.auth.signInWithPassword({email:v('email'),password:$('#pw').value});
+  idle(b);if(r.error)return note(r.error.message==='Invalid login credentials'?'Email or password is incorrect.':r.error.message);
+  if(!r.data.session)return note('Account created. Open the verification link we emailed you, then sign in here.','i')||authView('in');
+  boot()}}
+
+/* STEP 1-2: courses + intake */
+async function pickView(){step(1);
+ const [i,c]=await Promise.all([sb.from('intakes').select('*').eq('is_active',true),sb.from('courses').select('*').eq('is_active',true).order('category')]);
+ const now=Date.now();S.intakes=(i.data||[]).filter(x=>(!x.opens_at||now>=+new Date(x.opens_at))&&(!x.closes_at||now<=+new Date(x.closes_at)));S.courses=c.data||[];
+ if(!S.intakes.length){view.innerHTML='<h2>Applications are closed</h2><p class="sub">There is no open intake right now. Please check back soon.</p>';return}
+ const cats=[...new Set(S.courses.map(x=>x.category))],q=new URLSearchParams(location.search);
+ if(q.get('course')){const m=S.courses.find(x=>x.name.toLowerCase()===q.get('course').toLowerCase()&&x.category===q.get('category'));if(m)S.picked.add(m.code)}
+ view.innerHTML=`<h2>Choose your courses</h2><p class="sub">Select a category, tick your courses and pick an intake.</p>
+ <label for="cat">Category</label><select id="cat">${cats.map(x=>`<option>${x}</option>`).join('')}</select><div id="list"></div>
+ <label for="intake">Intake</label><select id="intake">${S.intakes.map(x=>`<option value="${x.id}">${x.label}</option>`).join('')}</select><div class="err" id="e_intake"></div>
+ <div class="total"><span>Total</span><span id="tot">${naira(0)}</span></div><button id="apply">Apply now</button>`;
+ const draw=()=>{$('#list').innerHTML=S.courses.filter(x=>x.category===$('#cat').value).map(x=>`<label class="course"><input type="checkbox" value="${x.code}" ${S.picked.has(x.code)?'checked':''}>${x.name}<b>${naira(x.fee_ngn)}</b></label>`).join('');
+  $('#list').querySelectorAll('input').forEach(k=>k.onchange=()=>{k.checked?S.picked.add(k.value):S.picked.delete(k.value);tot()})};
+ const tot=()=>$('#tot').textContent=naira(S.courses.filter(x=>S.picked.has(x.code)).reduce((s,x)=>s+x.fee_ngn,0));
+ $('#cat').onchange=draw;draw();tot();
+ $('#apply').onclick=async e=>{if(!S.picked.size)return fe(0,{intake:'Tick at least one course.'});busy(e.target,'Preparing your payment account...');note('');
+  const key=localStorage.getItem('ahct_key')||(localStorage.setItem('ahct_key',crypto.randomUUID()),localStorage.getItem('ahct_key'));
+  const r=await call('create-application',{intakeId:$('#intake').value,courseCodes:[...S.picked],key});idle(e.target);
+  if(!r.ok)return note(r.error||'Could not start your application.');S.app=r.application;route()}}
+
+/* STEP 3: payment (form unlocks automatically via Realtime + polling fallback) */
+let ch,poll;
+async function payView(){step(2);const a=S.app;
+ view.innerHTML=`<h2>Make your payment</h2><p class="sub">Transfer the exact amount below. This page unlocks your form automatically once the payment arrives (usually within a few minutes).</p>
+ <div class="acct"><div>${a.pay_bank||''}</div><strong id="acn">${a.pay_account}</strong> <button class="ghost" id="cp" style="width:auto;margin:0;padding:4px 8px">Copy</button><div>Amount: <b>${naira(a.total_ngn)}</b></div></div>
+ <div class="notice i" id="ps">Waiting for your payment...</div><button class="ghost" id="chk">I have paid, check now</button>`;
+ $('#cp').onclick=()=>{navigator.clipboard?.writeText(a.pay_account);$('#cp').textContent='Copied'};
+ const check=async()=>{const {data}=await sb.from('applications').select('*').eq('id',a.id).single();if(data&&data.status!=='pending_payment'){S.app=data;cleanup();route()}};
+ $('#chk').onclick=async()=>{$('#ps').textContent='Checking...';await check();$('#ps').textContent='Not received yet. Bank transfers can take a few minutes.'};
+ ch=sb.channel('app-'+a.id).on('postgres_changes',{event:'UPDATE',schema:'public',table:'applications',filter:`id=eq.${a.id}`},check).subscribe();
+ poll=setInterval(check,15000)}
+function cleanup(){if(ch)sb.removeChannel(ch);clearInterval(poll)}
+
+/* STEP 4: details + passport (<=100 KB, compressed in the browser) */
+async function compress(file){const img=await createImageBitmap(file);let w=Math.min(600,img.width),q=.85;
+ for(let n=0;n<12;n++){const c=document.createElement('canvas');c.width=w;c.height=Math.round(img.height*w/img.width);c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+  const b=await new Promise(r=>c.toBlob(r,'image/jpeg',q));if(b.size<=100*1024)return b;q>.5?q-=.1:w=Math.round(w*.8)}
+ throw new Error('Photo is too large. Use a clearer, closer passport photo.')}
+function formView(){step(3);const d=JSON.parse(localStorage.getItem('ahct_draft_'+S.app.id)||'{}'),f=['surname','firstName','otherNames','phone','dob','gender','state','address'];
+ view.innerHTML=`<h2>Your details</h2><p class="sub">Payment received. Complete your application.</p>
+>>>>>>> b8bcfdc7b012884f71c26476c5e3cdfbe95a0ec9
  <label for="surname">Surname</label><input id="surname" autocomplete="family-name"><div class="err" id="e_surname"></div>
  <label for="firstName">First name</label><input id="firstName" autocomplete="given-name"><div class="err" id="e_firstName"></div>
  <label for="otherNames">Other names (optional)</label><input id="otherNames">
  <label for="phone">Phone number</label><input id="phone" inputmode="tel" autocomplete="tel"><div class="err" id="e_phone"></div>
  <label for="dob">Date of birth</label><input id="dob" type="date"><div class="err" id="e_dob"></div>
  <label for="gender">Gender</label><select id="gender"><option value="">Select</option><option>Male</option><option>Female</option></select><div class="err" id="e_gender"></div>
- <label for="state">State of residence</label><select id="state"><option value="">Select</option>${STATES.map(s => `<option>${s}</option>`).join('')}</select><div class="err" id="e_state"></div>
+ <label for="state">State of residence</label><select id="state"><option value="">Select</option>${STATES.map(s=>`<option>${s}</option>`).join('')}</select><div class="err" id="e_state"></div>
  <label for="address">Home address</label><textarea id="address" rows="2"></textarea><div class="err" id="e_address"></div>
  <label for="pp">Passport photograph (we shrink it to under 100 KB)</label><input id="pp" type="file" accept="image/jpeg,image/png"><div class="err" id="e_passport"></div><div id="pv"></div>
  <button id="sub">Submit application</button>`;
+<<<<<<< HEAD
         f.forEach(k => { if (d[k]) $('#' + k).value = d[k]; $('#' + k).oninput = () => { d[k] = $('#' + k).value; localStorage.setItem('ahct_draft_' + S.app.id, JSON.stringify(d)) } });
         let blob = null; $('#pp').onchange = async e => { fe(0, {}); if (!e.target.files[0]) return; try { blob = await compress(e.target.files[0]); $('#pv').innerHTML = `<img src="${URL.createObjectURL(blob)}" alt="Passport preview" style="height:90px;margin-top:6px;border-radius:6px"><div class="sub">${Math.round(blob.size / 1024)} KB, ready.</div>` } catch (x) { blob = null; fe(0, { passport: x.message }) } };
         $('#sub').onclick = async e => {
@@ -884,3 +1061,33 @@
 </body>
 
 </html>
+=======
+ f.forEach(k=>{if(d[k])$('#'+k).value=d[k];$('#'+k).oninput=()=>{d[k]=$('#'+k).value;localStorage.setItem('ahct_draft_'+S.app.id,JSON.stringify(d))}});
+ let blob=null;$('#pp').onchange=async e=>{fe(0,{});if(!e.target.files[0])return;try{blob=await compress(e.target.files[0]);$('#pv').innerHTML=`<img src="${URL.createObjectURL(blob)}" alt="Passport preview" style="height:90px;margin-top:6px;border-radius:6px"><div class="sub">${Math.round(blob.size/1024)} KB, ready.</div>`}catch(x){blob=null;fe(0,{passport:x.message})}};
+ $('#sub').onclick=async e=>{const form={};f.forEach(k=>form[k]=$('#'+k).value.trim());
+  if(!blob&&!S.app.passport_path)return fe(0,{passport:'Upload your passport photograph.'});
+  busy(e.target,'Submitting...');note('');let path=S.app.passport_path;
+  if(blob){const {data:{user}}=await sb.auth.getUser();path=`${user.id}/${S.app.id}/passport.jpg`;
+   const up=await sb.storage.from('passports').upload(path,blob,{contentType:'image/jpeg',upsert:true});
+   if(up.error){idle(e.target);return note('Photo upload failed: '+up.error.message)}}
+  const r=await call('submit-application',{applicationId:S.app.id,form,passportPath:path});idle(e.target);
+  if(r.status===422)return fe(0,r.errors);if(!r.ok)return note(r.error||'Submission failed. Try again.');
+  localStorage.removeItem('ahct_draft_'+S.app.id);S.app.student_id=r.studentId;S.app.status='submitted';S.app.form_data=form;route()}}
+
+/* STEP 5: receipt */
+function doneView(){step(4);const a=S.app;
+ view.innerHTML=`<h2>Application submitted</h2><p class="sub">Your application is now under review. Keep your Student ID.</p><div class="id">${a.student_id}</div>
+ <div class="total"><span>Amount paid</span><span>${naira(a.total_ngn)}</span></div>
+ <button onclick="window.print()">Print or save receipt</button><button class="ghost" id="so">Sign out</button>`;
+ $('#so').onclick=async()=>{await sb.auth.signOut();location.reload()}}
+
+function route(){note('');const a=S.app;if(!a)return pickView();
+ if(a.status==='pending_payment')return payView();if(a.status==='paid')return formView();
+ if(a.status==='expired'||a.status==='rejected'){S.app=null;return pickView()}return doneView()}
+async function boot(){const {data:{session}}=await sb.auth.getSession();if(!session)return authView('up');
+ const {data}=await sb.from('applications').select('*').eq('user_id',session.user.id).not('status','in','(expired,rejected)').maybeSingle();
+ S.app=data;route()}
+boot().catch(function(e){fatal(e.message)});
+}
+</script></body></html>
+>>>>>>> b8bcfdc7b012884f71c26476c5e3cdfbe95a0ec9

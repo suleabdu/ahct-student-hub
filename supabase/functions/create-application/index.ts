@@ -1,12 +1,13 @@
 // "Apply now": locks price server-side, creates application + Monnify reserved account.
-import { admin, cors, json, userFrom } from "../_shared/lib.ts";
+import { admin, json, safe, userFrom } from "../_shared/lib.ts";
 const MB = Deno.env.get("MONNIFY_BASE_URL") ?? "https://sandbox.monnify.com";
 async function monnifyToken() {
   const r = await fetch(`${MB}/api/v1/auth/login`, { method: "POST", headers: { Authorization: "Basic " + btoa(`${Deno.env.get("MONNIFY_API_KEY")}:${Deno.env.get("MONNIFY_SECRET_KEY")}`) } });
-  return (await r.json()).responseBody.accessToken as string;
+  const j = await r.json();
+  if (!j.requestSuccessful || !j.responseBody?.accessToken) throw new Error("Monnify login failed: " + (j.responseMessage ?? r.status) + " (check MONNIFY_API_KEY, MONNIFY_SECRET_KEY, MONNIFY_BASE_URL)");
+  return j.responseBody.accessToken as string;
 }
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+Deno.serve(safe(async (req) => {
   const user = await userFrom(req); if (!user) return json({ error: "Please sign in again." }, 401);
   const { intakeId, courseCodes, key } = await req.json();
   if (!intakeId || !Array.isArray(courseCodes) || !courseCodes.length) return json({ error: "Choose an intake and at least one course." }, 400);
@@ -21,15 +22,21 @@ Deno.serve(async (req) => {
   const total = courses.reduce((s, c) => s + c.fee_ngn, 0);
   const ref = "AHCT-" + crypto.randomUUID().slice(0, 12).toUpperCase();
   const { data: prof } = await db.from("profiles").select("full_name").eq("id", user.id).single();
-  const m = await fetch(`${MB}/api/v2/bank-transfer/reserved-accounts`, { method: "POST",
+  const m = await fetch(`${MB}/api/v2/bank-transfer/reserved-accounts`, {
+    method: "POST",
     headers: { Authorization: "Bearer " + await monnifyToken(), "Content-Type": "application/json" },
-    body: JSON.stringify({ accountReference: ref, accountName: "AH Consult - " + (prof?.full_name ?? "Applicant"), currencyCode: "NGN",
-      contractCode: Deno.env.get("MONNIFY_CONTRACT_CODE"), customerEmail: user.email, customerName: prof?.full_name ?? user.email, getAllAvailableBanks: false, preferredBanks: ["035"] }) });
-  const acct = (await m.json()).responseBody?.accounts?.[0];
-  if (!acct) return json({ error: "Payment account could not be created. Try again in a minute." }, 502);
-  const { data: app, error } = await db.from("applications").insert({ user_id: user.id, intake_id: intakeId, total_ngn: total, idempotency_key: key ?? null,
-    pay_reference: ref, pay_bank: acct.bankName, pay_account: acct.accountNumber }).select().single();
+    body: JSON.stringify({
+      accountReference: ref, accountName: "AH Consult - " + (prof?.full_name ?? "Applicant"), currencyCode: "NGN",
+      contractCode: Deno.env.get("MONNIFY_CONTRACT_CODE"), customerEmail: user.email, customerName: prof?.full_name ?? user.email, getAllAvailableBanks: false, preferredBanks: ["035"]
+    })
+  });
+  const mj = await m.json(); const acct = mj.responseBody?.accounts?.[0];
+  if (!acct) { console.error("MONNIFY RESERVED ACCOUNT FAILED:", JSON.stringify(mj)); return json({ error: "Payment account could not be created. Please try again shortly.", detail: mj.responseMessage }, 502); }
+  const { data: app, error } = await db.from("applications").insert({
+    user_id: user.id, intake_id: intakeId, total_ngn: total, idempotency_key: key ?? null,
+    pay_reference: ref, pay_bank: acct.bankName, pay_account: acct.accountNumber
+  }).select().single();
   if (error) return json({ error: "Could not start application." }, 500);
   await db.from("application_courses").insert(courses.map((c) => ({ application_id: app.id, course_code: c.code, fee_ngn: c.fee_ngn })));
   return json({ application: app });
-});
+}));
