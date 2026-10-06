@@ -14,8 +14,4 @@ const API_BASE_URL = "https://ahct-student-hub.onrender.com";
 window.APPLY_CONFIG = {
   SUPABASE_URL: "https://xwieiqrnlvcjajdeinqc.supabase.co",
   SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh3aWVpcXJubHZjamFqZGVpbnFjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEyNjE1MzksImV4cCI6MjEwNjgzNzUzOX0.dCdmn69bi0oznIOmEWgXQrz_-HHNT2MYGxY8n8ydukI",
-<<<<<<< HEAD
 };
-=======
-};
->>>>>>> b8bcfdc7b012884f71c26476c5e3cdfbe95a0ec9
