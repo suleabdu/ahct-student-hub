@@ -55,7 +55,7 @@ async function ensureTab(H: any, SID: string, TAB: string) { // create the tab +
 }
 async function diagnose(db: any) {
   const steps: any[] = [], add = (step: string, ok: boolean, detail = "") => steps.push({ step, ok, detail });
-  const SID = Deno.env.get("SHEET_ID"), TAB = Deno.env.get("SHEET_TAB") ?? "Applications";
+  const SID = Deno.env.get("SHEET_ID"), TAB = Deno.env.get("SHEET_TAB") ?? "Online Applications";
   add("Secret SHEET_ID is set", !!SID); add("Google service account secret is set (_B64 or _JSON)", hasSA());
   if (SID && hasSA()) {
     try { const sa = parseSA(); add("Service account key parses", true, "client_email: " + sa.client_email + "  <- the Google Sheet must be shared with this address as Editor");
@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
   try {
     const r = await db.from("sheet_outbox").select("*").eq("done", false).lt("attempts", 5).order("id").limit(25); jobs = r.data ?? [];
     if (!jobs.length) return json({ synced: 0, note: "nothing pending" });
-    const SID = Deno.env.get("SHEET_ID"), TAB = Deno.env.get("SHEET_TAB") ?? "Applications";
+    const SID = Deno.env.get("SHEET_ID"), TAB = Deno.env.get("SHEET_TAB") ?? "Online Applications";
     if (!SID) throw new Error("Missing secret SHEET_ID"); if (!hasSA()) throw new Error("Missing secret GOOGLE_SERVICE_ACCOUNT_B64");
     const H = { Authorization: `Bearer ${await token()}`, "Content-Type": "application/json" }, base = `${API}/${SID}/values/${encodeURIComponent(TAB)}`;
     await ensureTab(H, SID, TAB);
@@ -86,6 +86,7 @@ Deno.serve(async (req) => {
     for (const j of jobs) {
       try {
         const { data: a } = await db.from("applications").select("*, intakes(label), application_courses(course_code), profiles(full_name,phone)").eq("id", j.application_id).single();
+        if (!a) { await db.from("sheet_outbox").update({ done: true, last_error: "skipped: application no longer exists" }).eq("id", j.id); continue; }
         const f = a.form_data ?? {};
         const row = [a.id, a.student_id ?? "", f.surname ? `${f.surname} ${f.firstName}`.trim() : a.profiles?.full_name ?? "", f.phone ?? a.profiles?.phone ?? "", a.intakes?.label,
           (a.package_code ? "[FULL PACKAGE] " : "") + a.application_courses.map((c: any) => c.course_code).join(", "), a.total_ngn, a.status, a.created_at, a.paid_at ?? "", a.submitted_at ?? "", a.payment_claimed_at ?? "", cap(a.payment_review)];
