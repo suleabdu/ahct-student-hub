@@ -3,6 +3,8 @@ import { admin, json, safe } from "../_shared/lib.ts";
 Deno.serve(safe(async (req) => {
   if (req.headers.get("x-sheet-secret") !== Deno.env.get("SHEET_WEBHOOK_SECRET")) return json({ error: "Unauthorized" }, 401);
   const { applicationId, decision, by } = await req.json();
+  console.log("sheet-review called:", applicationId, decision, by);
+  if (applicationId === "TEST") return json({ message: "Connection and secret are OK." });
   if (!["pending", "approved", "rejected"].includes(decision)) return json({ error: "Use Pending, Approved or Rejected." }, 400);
   const db = admin();
   const { data: app } = await db.from("applications").select("*").eq("id", applicationId).maybeSingle();

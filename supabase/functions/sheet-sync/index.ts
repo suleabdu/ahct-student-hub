@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
         const row = [a.id, a.student_id ?? "", f.surname ? `${f.surname} ${f.firstName}`.trim() : a.profiles?.full_name ?? "", f.phone ?? a.profiles?.phone ?? "", a.intakes?.label,
           (a.package_code ? "[FULL PACKAGE] " : "") + a.application_courses.map((c: any) => c.course_code).join(", "), a.total_ngn, a.status, a.created_at, a.paid_at ?? "", a.submitted_at ?? "", a.payment_claimed_at ?? "", cap(a.payment_review)];
         let i = ids.indexOf(a.id); if (i < 0) { ids = await readIds(); i = ids.indexOf(a.id); } // re-read just before appending: no duplicate rows
-        const u = i >= 0 ? `${base}!A${i + 1}?valueInputOption=USER_ENTERED` : `${base}!A:A:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
+        const u = i >= 0 ? `${base}!A${i + 1}?valueInputOption=USER_ENTERED` : `${base}!A:A:append?valueInputOption=USER_ENTERED&insertDataOption=OVERWRITE`;
         const res = await fetch(u, { method: i >= 0 ? "PUT" : "POST", headers: H, signal: T(), body: JSON.stringify({ values: [row] }) });
         if (!res.ok) throw new Error(`Sheets write failed (${res.status}): ${(await res.text()).slice(0, 300)}`);
         if (i < 0) ids.push(a.id);
