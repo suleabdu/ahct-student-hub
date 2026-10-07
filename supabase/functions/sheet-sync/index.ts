@@ -9,15 +9,25 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const API = "https://sheets.googleapis.com/v4/spreadsheets";
 // Accepts GOOGLE_SERVICE_ACCOUNT_B64 (base64 of the key file: cannot be mangled) or GOOGLE_SERVICE_ACCOUNT_JSON (also repairs common paste damage).
 const hasSA = () => !!(Deno.env.get("GOOGLE_SERVICE_ACCOUNT_B64") || Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON"));
+function validateSA(v: any) { // must be a Google SERVICE ACCOUNT key file; say precisely what was found otherwise
+  if (typeof v === "string") { try { v = JSON.parse(v); } catch { /* handled below */ } }
+  if (v && typeof v === "object" && v.client_email && v.private_key) return v;
+  const keys = v && typeof v === "object" ? Object.keys(v).slice(0, 8).join(", ") : typeof v;
+  const hint = v && (v.web || v.installed) ? "This is an OAuth CLIENT file (client_secret_...json), not a service account key."
+    : "A service account key file starts with {\"type\": \"service_account\" and contains client_email and private_key.";
+  throw new Error(`The Google key secret decoded, but it is not a service account key (found: ${keys}). ${hint} In Google Cloud Console go to IAM & Admin > Service Accounts > your account > Keys > Add key > Create new key > JSON, then use THAT file.`);
+}
 function parseSA() {
   const b64 = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_B64");
-  if (b64) { try { return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s/g, "")), (c) => c.charCodeAt(0)))); } catch { throw new Error("GOOGLE_SERVICE_ACCOUNT_B64 is not valid base64 of the key file. Re-create it from the original .json file."); } }
+  if (b64) { let txt: string; try { txt = new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s/g, "")), (c) => c.charCodeAt(0))); } catch { throw new Error("GOOGLE_SERVICE_ACCOUNT_B64 is not valid base64. Re-create it from the original .json file."); }
+    let v: any; try { v = JSON.parse(txt); } catch { throw new Error(`GOOGLE_SERVICE_ACCOUNT_B64 decoded to text that is not JSON (starts with ${JSON.stringify(txt.slice(0, 12))}). Base64-encode the original .json file itself.`); }
+    return validateSA(v); }
   let raw = (Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON") ?? "").trim();
   if (raw.length > 1 && raw.startsWith("'") && raw.endsWith("'")) raw = raw.slice(1, -1);
-  try { let v = JSON.parse(raw); if (typeof v === "string") v = JSON.parse(v); return v; } catch { /* try to salvage below */ }
+  try { return validateSA(JSON.parse(raw)); } catch (e) { if (e instanceof Error && e.message.startsWith("The Google key")) throw e; }
   const email = raw.match(/"client_email"\s*:\s*"([^"]+)"/)?.[1], key = raw.match(/"private_key"\s*:\s*"([\s\S]*?-----END PRIVATE KEY-----)/)?.[1];
   if (email && key) return { client_email: email, private_key: key }; // token() strips \n and whitespace itself
-  throw new Error(`GOOGLE_SERVICE_ACCOUNT_JSON is damaged (received ${raw.length} characters, starting with ${JSON.stringify(raw.slice(0, 12))}). Use GOOGLE_SERVICE_ACCOUNT_B64 instead (see the setup steps).`);
+  throw new Error(`GOOGLE_SERVICE_ACCOUNT_JSON is damaged (received ${raw.length} characters, starting with ${JSON.stringify(raw.slice(0, 12))}). Use GOOGLE_SERVICE_ACCOUNT_B64 instead.`);
 }
 async function token() {
   const sa = parseSA(), now = Math.floor(Date.now() / 1000), head = b64u(JSON.stringify({ alg: "RS256", typ: "JWT" }));
