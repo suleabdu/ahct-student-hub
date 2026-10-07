@@ -80,6 +80,17 @@ footer{font-size:12px;padding:12px}.notice{font-size:13px;padding:11px}.kv div{f
 .rh{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--orange);padding-bottom:10px;margin-bottom:10px;gap:8px;flex-wrap:wrap}.rh span{color:var(--orange-d);font-weight:700;text-transform:uppercase;font-size:12px}
 @media print{button,.noprint{display:none!important}.panel{border:0;box-shadow:0;padding:0}}
 @media(max-width:520px){.acts button{width:100%}.hist li{grid-template-columns:1fr}.hist small{grid-column:1;grid-row:auto}}
+#aside{background:#fff;border-left:1px solid var(--line);padding:18px 14px;overflow:auto}
+.ap{text-align:center;padding-bottom:14px;border-bottom:1px solid #f3f4f6;margin-bottom:12px}.ph{width:92px;height:92px;border-radius:50%;margin:0 auto 10px;background:#ffedd5;border:3px solid var(--orange);overflow:hidden;display:grid;place-items:center;color:var(--orange-d);font-weight:900;font-size:26px}.ph img{width:100%;height:100%;object-fit:cover}
+.ap h4{margin:0;font-size:15px;word-break:break-word}.sid{font-family:monospace;color:var(--muted);font-size:12px;margin:2px 0 8px}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px}.pill.ok{background:#dcfce7;color:#166534}.pill.wait{background:#fef3c7;color:#92400e}.pill.bad{background:#fee2e2;color:#991b1b}.pill.none{background:#f3f4f6;color:var(--muted)}
+.dl{margin:0}.dl div{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid #f9fafb;font-size:13px}.dl dt{color:var(--muted);font-size:11.5px;font-weight:700;text-transform:uppercase}.dl dd{margin:0;text-align:right;font-weight:500;word-break:break-word}
+.cl{list-style:none;margin:0;padding:0}.cl li{padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;font-size:13px}.cl small{display:block;color:var(--orange-d);font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em}
+.total.sm{padding:10px 14px;margin-top:10px}
+@media(min-width:1101px){.shell{grid-template-columns:250px 1fr 290px}#asBtn{display:none}}
+@media(max-width:1100px){.shell{grid-template-columns:250px 1fr}#aside{position:fixed;right:0;top:56px;bottom:0;width:290px;max-width:88vw;z-index:24;transform:translateX(100%);transition:transform .25s;box-shadow:-4px 0 20px rgba(0,0,0,.2)}#aside.open{transform:none}}
+@media(max-width:820px){.shell{grid-template-columns:1fr}}
+@media print{#aside,#asBtn{display:none!important}}
 </style></head><body>
 <div id="auth" hidden>
  <aside class="hero"><img class="lg" alt="" onerror="this.style.display='none'">
@@ -88,12 +99,12 @@ footer{font-size:12px;padding:12px}.notice{font-size:13px;padding:11px}.kv div{f
 </div>
 <div id="app" hidden>
  <header class="top"><button id="burger" aria-label="Menu">&#9776;</button><img class="lg" alt="" onerror="this.style.display='none'"><span class="org">AH Consult CAD Training Programs</span><span class="sp"></span>
-  <button class="chip" id="chipP"><span class="av" id="av"></span><span id="uname"></span></button>
+  <button class="chip" id="asBtn">Summary</button><button class="chip" id="chipP"><span class="av" id="av"></span><span id="uname"></span></button>
   <div class="menuw"><button class="chip" id="gear" aria-label="Settings">&#9881;<span class="hide-sm"> Settings</span></button>
    <div class="menu" id="menu" hidden><button data-a="profile">My profile</button><button data-a="pw">Change password</button><button data-a="out">Sign out</button></div></div></header>
  <div class="shell"><nav id="side"><div class="cap">Application steps</div><div id="navsteps"></div><div class="grow"></div>
    <div class="cap">Account</div><button class="nv" id="nvPay"><span class="n">&#8358;</span>Payment status</button><button class="nv" id="nvProfile"><span class="n">&#9786;</span>My profile</button><button class="nv out" id="nvOut"><span class="n">&#10140;</span>Sign out</button></nav>
-  <main><div id="msgB"></div><div class="panel" id="content"></div></main></div>
+  <main><div id="msgB"></div><div class="panel" id="content"></div></main><aside id="aside"></aside></div>
  <footer>&copy; <span id="yr"></span> AH Consult Ltd. All rights reserved. Need help? Contact the AH Consult training office.</footer>
 </div>
 
@@ -115,7 +126,7 @@ function startApp(){
 const C=window.APPLY_CONFIG,sb=supabase.createClient(C.SUPABASE_URL,C.SUPABASE_ANON_KEY);
 document.querySelectorAll('.lg').forEach(i=>{if(C.LOGO_URL)i.src=C.LOGO_URL;else i.style.display='none'});if(C.AUTH_IMAGE_URL)document.querySelector('.hero').style.backgroundImage=`linear-gradient(180deg,rgba(17,24,39,.55),rgba(17,24,39,.85)),url('${C.AUTH_IMAGE_URL}')`;
 let view;const $=s=>document.querySelector(s),naira=n=>'₦'+Number(n).toLocaleString();
-const S={pre:null,w:null,pkgs:[],user:null,profile:null,nav:0,app:null,intakes:[],courses:[],picked:new Set(),intakeId:null};
+const S={catalog:null,intakeAll:[],ac:[],acFor:null,photoUrl:null,photoFor:null,pre:null,w:null,pkgs:[],user:null,profile:null,nav:0,app:null,intakes:[],courses:[],picked:new Set(),intakeId:null};
 const STATES=["Abia","Adamawa","Akwa Ibom","Anambra","Bauchi","Bayelsa","Benue","Borno","Cross River","Delta","Ebonyi","Edo","Ekiti","Enugu","FCT","Gombe","Imo","Jigawa","Kaduna","Kano","Katsina","Kebbi","Kogi","Kwara","Lagos","Nasarawa","Niger","Ogun","Ondo","Osun","Oyo","Plateau","Rivers","Sokoto","Taraba","Yobe","Zamfara"];
 function step(n){if(S.user)markNav(n-1)}
 function note(t,k='e'){$(S.user?'#msgB':'#msgA').innerHTML=t?`<div class="notice ${k}" role="alert">${t}</div>`:''}
@@ -166,7 +177,7 @@ async function pickView(){step(1);
   if(m){S.w.mode='cat';S.w.cat=m.category;S.picked.add(m.code);S.w.n=2}
   if(S.pre){const pr=S.pre;S.pre=null;S.picked=new Set(pr.codes);const f=S.courses.find(x=>S.picked.has(x.code));S.w.mode=pr.pkg&&S.pkgs[0]?'pkg':'cat';S.w.cat=S.w.mode==='pkg'?'':(f?f.category:'');if(S.intakes.some(x=>x.id===pr.intake))S.w.intake=pr.intake;S.w.n=1}}
  wizard()}
-function wizard(){const w=S.w,n=w.n,P=pkg(),opts=cats().map(c=>({mode:'cat',cat:c,t:c,s:'Pay per course'}));
+function wizard(){renderAside();const w=S.w,n=w.n,P=pkg(),opts=cats().map(c=>({mode:'cat',cat:c,t:c,s:'Pay per course'}));
  if(S.pkgs[0])opts.push({mode:'pkg',cat:'',t:S.pkgs[0].name+' - '+naira(S.pkgs[0].fee_ngn),s:'One course from each level, Beginner to Professional',pk:1});
  const dots=['Programme','Courses','Review & Pay'].map((t,i)=>`<li class="${i+1<n?'dn':''} ${i+1===n?'on':''}"><span>${i+1<n?'&#10003;':i+1}</span>${t}</li>`).join('');
  let body='';
@@ -177,7 +188,7 @@ function wizard(){const w=S.w,n=w.n,P=pkg(),opts=cats().map(c=>({mode:'cat',cat:
  if(n===3){const it=S.intakes.find(x=>x.id===w.intake);body=`<h3>Review &amp; payment</h3><div class="kv"><div><span>Programme</span>${esc(P?P.name:w.cat)}</div><div><span>Intake</span>${esc(it?.label||'')}</div>${picked().map(x=>`<div>${esc(x.name)} <small>(${esc(x.category)})</small><b>${P?'Included':naira(x.fee_ngn)}</b></div>`).join('')}</div><div class="total"><span>Total to pay</span><span>${naira(total())}</span></div><p class="sub" style="margin-top:12px">You will get an account number to pay into. Your application form opens automatically after payment.</p>`}
  view.innerHTML=`<ol class="wz">${dots}</ol>${body}<div class="nav2"><button class="btn2" id="bk" ${n===1?'disabled':''}>&larr; Back</button><button id="nx">${n===3?'Proceed to payment':'Next &rarr;'}</button></div>`;
  if(n===1){document.querySelectorAll('input[name=o]').forEach(r=>r.onchange=()=>{const o=opts[+r.value];if(o.mode!==w.mode||o.cat!==w.cat)S.picked.clear();w.mode=o.mode;w.cat=o.cat;document.querySelectorAll('.opt').forEach(l=>l.classList.toggle('sel',l.contains(r)&&r.checked))})}
- if(n===2)document.querySelectorAll('#view input[type=checkbox],#content input[type=checkbox]').forEach(k=>k.onchange=()=>{const mx=P?.max_courses;if(k.checked&&mx&&S.picked.size>=mx){k.checked=false;return fe(0,{courses:'You can choose up to '+mx+' courses with this package.'})}if(P&&k.checked){const cat=S.courses.find(x=>x.code===k.value).category;document.querySelectorAll('#content input[type=checkbox]').forEach(o=>{if(o!==k&&o.checked&&S.courses.find(x=>x.code===o.value).category===cat){o.checked=false;S.picked.delete(o.value)}})}k.checked?S.picked.add(k.value):S.picked.delete(k.value);$('#tot').textContent=naira(total());$('#e_courses').textContent=''});
+ if(n===2)document.querySelectorAll('#view input[type=checkbox],#content input[type=checkbox]').forEach(k=>k.onchange=()=>{const mx=P?.max_courses;if(k.checked&&mx&&S.picked.size>=mx){k.checked=false;return fe(0,{courses:'You can choose up to '+mx+' courses with this package.'})}if(P&&k.checked){const cat=S.courses.find(x=>x.code===k.value).category;document.querySelectorAll('#content input[type=checkbox]').forEach(o=>{if(o!==k&&o.checked&&S.courses.find(x=>x.code===o.value).category===cat){o.checked=false;S.picked.delete(o.value)}})}k.checked?S.picked.add(k.value):S.picked.delete(k.value);$('#tot').textContent=naira(total());$('#e_courses').textContent='';renderAside()});
  $('#bk').onclick=()=>{note('');w.n=Math.max(1,n-1);wizard()};
  $('#nx').onclick=async e=>{note('');
   if(n===1){if(!w.mode)return fe(0,{opt:'Please choose a course level or the Full Package.'});w.intake=$('#intake').value;w.n=2;return wizard()}
@@ -195,10 +206,10 @@ async function payView(){step(2);const a=S.app;
  <div class="notice i" id="ps">Waiting for your payment...</div><button class="ghost" id="chk">I have paid, check now</button><p class="sub" style="margin:10px 0 0">Not ready to pay? <a href="#" id="edt" style="color:var(--orange-d);font-weight:700">Go back and change my courses</a>. We will explain what happens first.</p>`;
  $('#cp').onclick=()=>{navigator.clipboard?.writeText(a.pay_account);$('#cp').textContent='Copied'};
  $('#edt').onclick=e=>{e.preventDefault();editSelection()};
- const paint=d=>{const el=$('#ps');if(!el)return;if(d.payment_review==='rejected'){el.className='notice e';el.textContent='We could not confirm your payment. Please check the amount and reference, then tap "I have paid" again or contact the training office.'}else if(d.payment_claimed_at){el.className='notice i';el.textContent='Payment submitted. Our team is confirming it and your form will open automatically. You can keep this page open.'}else{el.className='notice i';el.textContent='Waiting for your payment...'}};
+ const paint=d=>{renderAside();const el=$('#ps');if(!el)return;if(d.payment_review==='rejected'){el.className='notice e';el.textContent='We could not confirm your payment. Please check the amount and reference, then tap "I have paid" again or contact the training office.'}else if(d.payment_claimed_at){el.className='notice i';el.textContent='Payment submitted. Our team is confirming it and your form will open automatically. You can keep this page open.'}else{el.className='notice i';el.textContent='Waiting for your payment...'}};
  const check=async()=>{const {data}=await sb.from('applications').select('*').eq('id',a.id).single();if(!data)return;S.app=data;if(data.status!=='pending_payment'){cleanup();route();return}paint(data)};
  paint(a);
- $('#chk').onclick=async e=>{const b=e.target;busy(b,'Checking...');note('');await check();if(S.app.status==='pending_payment'){const r=await call('claim-payment',{applicationId:a.id});if(!r.ok)note(esc(r.error||'Could not send your payment notice. Please try again.'));else{S.app=r.application;paint(S.app)}}idle(b)};
+ $('#chk').onclick=async e=>{const b=e.target;busy(b,'Checking...');note('');await check();if(S.app.status==='pending_payment'){const r=await claimPayment(a.id);if(!r.ok)note(esc(r.error||'Could not send your payment notice. Please try again.'));else{S.app=r.application;paint(S.app)}}idle(b)};
  ch=sb.channel('app-'+a.id).on('postgres_changes',{event:'UPDATE',schema:'public',table:'applications',filter:`id=eq.${a.id}`},check).subscribe();
  poll=setInterval(check,15000)}
 function cleanup(){if(ch)sb.removeChannel(ch);clearInterval(poll)}
@@ -221,7 +232,7 @@ function formView(){step(3);const d=JSON.parse(localStorage.getItem('ahct_draft_
  <label for="pp">Passport photograph (we shrink it to under 100 KB)</label><input id="pp" type="file" accept="image/jpeg,image/png"><div class="err" id="e_passport"></div><div id="pv"></div>
  <button id="sub">Submit application</button>`;
  f.forEach(k=>{if(d[k])$('#'+k).value=d[k];$('#'+k).oninput=()=>{d[k]=$('#'+k).value;localStorage.setItem('ahct_draft_'+S.app.id,JSON.stringify(d))}});
- let blob=null;$('#pp').onchange=async e=>{fe(0,{});if(!e.target.files[0])return;try{blob=await compress(e.target.files[0]);$('#pv').innerHTML=`<img src="${URL.createObjectURL(blob)}" alt="Passport preview" style="height:90px;margin-top:6px;border-radius:6px"><div class="sub">${Math.round(blob.size/1024)} KB, ready.</div>`}catch(x){blob=null;fe(0,{passport:x.message})}};
+ let blob=null;$('#pp').onchange=async e=>{fe(0,{});if(!e.target.files[0])return;try{blob=await compress(e.target.files[0]);S.photoUrl=URL.createObjectURL(blob);renderAside();$('#pv').innerHTML=`<img src="${URL.createObjectURL(blob)}" alt="Passport preview" style="height:90px;margin-top:6px;border-radius:6px"><div class="sub">${Math.round(blob.size/1024)} KB, ready.</div>`}catch(x){blob=null;fe(0,{passport:x.message})}};
  $('#sub').onclick=async e=>{const form={};f.forEach(k=>form[k]=$('#'+k).value.trim());
   if(!blob&&!S.app.passport_path)return fe(0,{passport:'Upload your passport photograph.'});
   busy(e.target,'Submitting...');note('');let path=S.app.passport_path;
@@ -230,14 +241,14 @@ function formView(){step(3);const d=JSON.parse(localStorage.getItem('ahct_draft_
    if(up.error){idle(e.target);return note('Photo upload failed: '+up.error.message)}}
   const r=await call('submit-application',{applicationId:S.app.id,form,passportPath:path});idle(e.target);
   if(r.status===422)return fe(0,r.errors);if(!r.ok)return note(r.error||'Submission failed. Try again.');
-  localStorage.removeItem('ahct_draft_'+S.app.id);S.app.student_id=r.studentId;S.app.status='submitted';S.app.form_data=form;route()}}
+  localStorage.removeItem('ahct_draft_'+S.app.id);S.app.student_id=r.studentId;S.app.status='submitted';S.app.form_data=form;S.app.passport_path=path;route()}}
 
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function stage(){const a=S.app;if(!a)return 0;if(a.status==='pending_payment')return 1;if(a.status==='paid')return 2;return 3}
 function buildNav(){const st=stage(),items=['Courses & Intake','Payment','Application Form','Admission Status'];
  $('#navsteps').innerHTML=items.map((t,i)=>`<button class="nv ${i<st?'done':''} ${S.nav===i?'act':''} ${i>st?'lock':''}" data-i="${i}"><span class="n">${i<st?'&#10003;':i+1}</span>${t}</button>`).join('');
  $('#navsteps').querySelectorAll('.nv').forEach(b=>b.onclick=()=>go(+b.dataset.i));$('#nvProfile').classList.toggle('act',S.nav==='p');$('#nvPay').classList.toggle('act',S.nav==='ps')}
-function markNav(i){S.nav=i;if(S.user){buildNav();$('#side').classList.remove('open')}}
+function markNav(i){S.nav=i;if(S.user){buildNav();$('#side').classList.remove('open');$('#aside').classList.remove('open');renderAside()}}
 async function go(i){const st=stage();note('');view=$('#content');if(i>st)return note('Please complete the previous step first.','i');if(i===st)return route();
  markNav(i);const [ac,cs]=await Promise.all([sb.from('application_courses').select('course_code,fee_ngn').eq('application_id',S.app.id),sb.from('courses').select('code,name,category')]);
  const nm=Object.fromEntries((cs.data||[]).map(c=>[c.code,c.name+' ('+c.category+')']));
@@ -250,7 +261,7 @@ async function resetPw(){const r=await sb.auth.resetPasswordForEmail(S.user.emai
 async function signOut(){cleanup();await sb.auth.signOut();location.reload()}
 function showAuth(){$('#app').hidden=true;$('#auth').hidden=false;authView('up')}
 function showApp(){$('#auth').hidden=true;$('#app').hidden=false;view=$('#content');const n=S.profile?.full_name||S.user.email;$('#uname').textContent=n;$('#av').textContent=n[0].toUpperCase();$('#yr').textContent=new Date().getFullYear();buildNav()}
-function wire(){$('#burger').onclick=()=>$('#side').classList.toggle('open');$('#gear').onclick=e=>{e.stopPropagation();$('#menu').hidden=!$('#menu').hidden};document.onclick=()=>$('#menu').hidden=true;
+function wire(){$('#burger').onclick=()=>{$('#aside').classList.remove('open');$('#side').classList.toggle('open')};$('#asBtn').onclick=e=>{e.stopPropagation();$('#side').classList.remove('open');$('#aside').classList.toggle('open')};$('#gear').onclick=e=>{e.stopPropagation();$('#menu').hidden=!$('#menu').hidden};document.onclick=()=>$('#menu').hidden=true;
  $('#chipP').onclick=$('#nvProfile').onclick=profileView;$('#nvPay').onclick=statusView;$('#nvOut').onclick=signOut;
  $('#menu').querySelectorAll('button').forEach(b=>b.onclick=()=>({profile:profileView,pw:resetPw,out:signOut})[b.dataset.a]())}
 function doneView(){step(4);const a=S.app,st=a.status,on=[1,st==='under_review'||st==='approved',st==='approved'];
@@ -262,6 +273,28 @@ async function boot(){const {data:{session}}=await sb.auth.getSession();if(!sess
  S.profile=p.data;S.app=a.data;showApp();route()}
 /* PAYMENT STATUS, RECEIPT, EDIT-BEFORE-PAY */
 function ask(title,body,yes,no){return new Promise(res=>{const m=document.createElement('div');m.className='mdl';m.innerHTML=`<div class="mbox" role="dialog" aria-modal="true"><h3>${title}</h3>${body}<div class="nav2"><button class="btn2" id="mn">${no||'Cancel'}</button>${yes?`<button id="my">${yes}</button>`:''}</div></div>`;document.body.appendChild(m);const done=v=>{m.remove();res(v)};m.querySelector('#mn').onclick=()=>done(false);if(yes)m.querySelector('#my').onclick=()=>done(true)})}
+/* RIGHT SIDEBAR: applicant summary */
+async function claimPayment(id){let t;const to=new Promise(res=>{t=setTimeout(()=>res({error:{message:'timeout'}}),15000)});
+ const r=await Promise.race([sb.rpc('claim_payment',{p_app:id}),to]);clearTimeout(t);
+ if(r.error){console.error('claim_payment failed:',r.error);return {ok:false,error:r.error.message==='timeout'?'This is taking too long. Please check your connection and try again.':(DEBUG?r.error.message:'We could not send your payment notice. Please try again.')}}
+ fetch(C.SUPABASE_URL+'/functions/v1/sheet-sync',{method:'POST',mode:'no-cors'}).catch(()=>{});
+ return {ok:true,application:r.data}}
+async function renderAside(){const el=$('#aside');if(!el||!S.user)return;
+ try{if(!S.catalog){const [c,i]=await Promise.all([sb.from('courses').select('code,name,category'),sb.from('intakes').select('id,label')]);S.catalog=c.data||[];S.intakeAll=i.data||[]}
+  const a=S.app;let codes=[];
+  if(a){if(S.acFor!==a.id){const {data}=await sb.from('application_courses').select('course_code').eq('application_id',a.id);S.ac=(data||[]).map(x=>x.course_code);S.acFor=a.id}codes=S.ac||[]}else if(S.w)codes=[...S.picked];
+  if(a?.passport_path&&S.photoFor!==a.passport_path){S.photoFor=a.passport_path;try{const r=await sb.storage.from('passports').createSignedUrl(a.passport_path,3600);if(r.data?.signedUrl)S.photoUrl=r.data.signedUrl}catch(e){}}
+  const f=a?.form_data||{},p=S.profile||{},name=f.surname?(f.firstName+' '+f.surname):(p.full_name||S.user.email),ini=name.split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase();
+  const st=!a?['none','Not started']:a.status==='pending_payment'?(a.payment_review==='rejected'?['bad','Payment not confirmed']:a.payment_claimed_at?['wait','Payment under review']:['wait','Awaiting payment']):a.status==='paid'?['ok','Paid - complete your form']:a.status==='submitted'?['ok','Submitted']:a.status==='under_review'?['wait','Under review']:a.status==='approved'?['ok','Admitted']:['none',a.status];
+  const items=codes.map(c=>S.catalog.find(x=>x.code===c)).filter(Boolean),it=S.intakeAll.find(x=>x.id===(a?a.intake_id:(S.w&&S.w.intake))),w=S.w;
+  const prog=a?(a.package_code?'Full Package':'Per course'):(w&&w.mode?(w.mode==='pkg'?'Full Package':w.cat):'');
+  const tot=a?a.total_ngn:(w&&w.mode==='pkg'&&S.pkgs[0]?S.pkgs[0].fee_ngn:items.reduce((s,x)=>s+((S.courses.find(c=>c.code===x.code)||{}).fee_ngn||0),0));
+  const row=(k,v)=>`<div><dt>${k}</dt><dd>${esc(v||'-')}</dd></div>`;
+  el.innerHTML=`<div class="ap"><div class="ph">${S.photoUrl?`<img src="${esc(S.photoUrl)}" alt="Applicant photo">`:`<span>${esc(ini)}</span>`}</div><h4>${esc(name)}</h4><div class="sid">${a?.student_id?esc(a.student_id):'Applicant'}</div><span class="pill ${st[0]}">${st[1]}</span></div>
+  <div class="cap">Applicant details</div><dl class="dl">${row('Phone',f.phone||p.phone)}${row('Gender',f.gender)}${row('Email',S.user.email)}${f.state?row('State',f.state):''}${row('Intake',it?.label)}${row('Programme',prog)}</dl>
+  <div class="cap" style="margin-top:12px">Selected courses</div>${items.length?`<ul class="cl">${items.map(x=>`<li><small>${esc(x.category)}</small>${esc(x.name)}</li>`).join('')}</ul>`:'<p class="sub" style="font-size:12.5px">No courses selected yet.</p>'}
+  ${tot?`<div class="total sm"><span>Total</span><span>${naira(tot)}</span></div>`:''}<p class="sub" style="font-size:11.5px;margin:12px 0 0">Details fill in as you complete each step.</p>`}catch(e){console.error('aside:',e)}}
+
 async function refreshApp(){const {data}=await sb.from('applications').select('*').eq('user_id',S.user.id).not('status','in','(expired,rejected)').maybeSingle();S.app=data;return data}
 async function editSelection(){const a=S.app;if(!a||a.status!=='pending_payment')return;
  if(a.payment_claimed_at&&a.payment_review==='pending')return ask('Courses cannot be changed now','<p class="sub">You have already told us you paid, so your payment is being verified. To change your courses, please contact the training office with your payment reference <b>'+esc(a.pay_reference)+'</b>.</p>',null,'OK');
@@ -280,7 +313,7 @@ async function statusView(){view=$('#content');markNav('ps');note('');await refr
  <div class="acts">${a&&!paid?'<button class="btn2" id="rf">Refresh status</button><button id="cf">I have paid, confirm payment</button>':''}${paid?'<button id="rc">View &amp; print receipt</button>':''}</div>
  <h3 style="margin-top:22px">Transaction history</h3>${ev.length?`<ul class="hist">${ev.map(e=>`<li><b>${e[1]}</b><span>${esc(e[2])}</span><small>${new Date(e[0]).toLocaleString()}</small></li>`).join('')}</ul>`:'<p class="sub">No transactions yet.</p>'}`;
  if($('#rf'))$('#rf').onclick=async()=>{await refreshApp();if(S.app&&S.app.status!=='pending_payment')return route();statusView()};
- if($('#cf'))$('#cf').onclick=async e=>{busy(e.target,'Sending...');const r=await call('claim-payment',{applicationId:a.id});idle(e.target);if(!r.ok)return note(esc(r.error||'Could not send your payment notice.'));statusView()};
+ if($('#cf'))$('#cf').onclick=async e=>{busy(e.target,'Sending...');const r=await claimPayment(a.id);idle(e.target);if(!r.ok)return note(esc(r.error||'Could not send your payment notice.'));statusView()};
  if($('#rc'))$('#rc').onclick=receiptView}
 async function receiptView(){view=$('#content');markNav('ps');const a=S.app;if(!a||a.status==='pending_payment')return statusView();
  const [ac,cs,py]=await Promise.all([sb.from('application_courses').select('course_code,fee_ngn').eq('application_id',a.id),sb.from('courses').select('code,name,category'),sb.from('payments').select('*').eq('application_id',a.id)]);
