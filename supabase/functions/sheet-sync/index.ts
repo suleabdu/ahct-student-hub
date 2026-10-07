@@ -7,7 +7,18 @@ const HEAD = ["ApplicationID","StudentID","Name","Phone","Intake","Courses","Tot
 const b64u = (s: ArrayBuffer | string) => btoa(typeof s === "string" ? s : String.fromCharCode(...new Uint8Array(s))).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const API = "https://sheets.googleapis.com/v4/spreadsheets";
-function parseSA() { try { return JSON.parse(Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON")!); } catch { throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON is not valid JSON. Re-set it with the complete contents of the downloaded key file."); } }
+// Accepts GOOGLE_SERVICE_ACCOUNT_B64 (base64 of the key file: cannot be mangled) or GOOGLE_SERVICE_ACCOUNT_JSON (also repairs common paste damage).
+const hasSA = () => !!(Deno.env.get("GOOGLE_SERVICE_ACCOUNT_B64") || Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON"));
+function parseSA() {
+  const b64 = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_B64");
+  if (b64) { try { return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s/g, "")), (c) => c.charCodeAt(0)))); } catch { throw new Error("GOOGLE_SERVICE_ACCOUNT_B64 is not valid base64 of the key file. Re-create it from the original .json file."); } }
+  let raw = (Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON") ?? "").trim();
+  if (raw.length > 1 && raw.startsWith("'") && raw.endsWith("'")) raw = raw.slice(1, -1);
+  try { let v = JSON.parse(raw); if (typeof v === "string") v = JSON.parse(v); return v; } catch { /* try to salvage below */ }
+  const email = raw.match(/"client_email"\s*:\s*"([^"]+)"/)?.[1], key = raw.match(/"private_key"\s*:\s*"([\s\S]*?-----END PRIVATE KEY-----)/)?.[1];
+  if (email && key) return { client_email: email, private_key: key }; // token() strips \n and whitespace itself
+  throw new Error(`GOOGLE_SERVICE_ACCOUNT_JSON is damaged (received ${raw.length} characters, starting with ${JSON.stringify(raw.slice(0, 12))}). Use GOOGLE_SERVICE_ACCOUNT_B64 instead (see the setup steps).`);
+}
 async function token() {
   const sa = parseSA(), now = Math.floor(Date.now() / 1000), head = b64u(JSON.stringify({ alg: "RS256", typ: "JWT" }));
   const body = b64u(JSON.stringify({ iss: sa.client_email, scope: "https://www.googleapis.com/auth/spreadsheets", aud: "https://oauth2.googleapis.com/token", iat: now, exp: now + 3600 }));
@@ -35,8 +46,8 @@ async function ensureTab(H: any, SID: string, TAB: string) { // create the tab +
 async function diagnose(db: any) {
   const steps: any[] = [], add = (step: string, ok: boolean, detail = "") => steps.push({ step, ok, detail });
   const SID = Deno.env.get("SHEET_ID"), TAB = Deno.env.get("SHEET_TAB") ?? "Applications";
-  add("Secret SHEET_ID is set", !!SID); add("Secret GOOGLE_SERVICE_ACCOUNT_JSON is set", !!Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON"));
-  if (SID && Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON")) {
+  add("Secret SHEET_ID is set", !!SID); add("Google service account secret is set (_B64 or _JSON)", hasSA());
+  if (SID && hasSA()) {
     try { const sa = parseSA(); add("Service account key parses", true, "client_email: " + sa.client_email + "  <- the Google Sheet must be shared with this address as Editor");
       const H = { Authorization: `Bearer ${await token()}`, "Content-Type": "application/json" }; add("Google accepts the key", true);
       const m = await meta(H, SID); add("Spreadsheet reachable", true, "title: " + m.properties?.title);
@@ -56,7 +67,7 @@ Deno.serve(async (req) => {
     const r = await db.from("sheet_outbox").select("*").eq("done", false).lt("attempts", 5).order("id").limit(25); jobs = r.data ?? [];
     if (!jobs.length) return json({ synced: 0, note: "nothing pending" });
     const SID = Deno.env.get("SHEET_ID"), TAB = Deno.env.get("SHEET_TAB") ?? "Applications";
-    if (!SID) throw new Error("Missing secret SHEET_ID"); if (!Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON")) throw new Error("Missing secret GOOGLE_SERVICE_ACCOUNT_JSON");
+    if (!SID) throw new Error("Missing secret SHEET_ID"); if (!hasSA()) throw new Error("Missing secret GOOGLE_SERVICE_ACCOUNT_B64");
     const H = { Authorization: `Bearer ${await token()}`, "Content-Type": "application/json" }, base = `${API}/${SID}/values/${encodeURIComponent(TAB)}`;
     await ensureTab(H, SID, TAB);
     const readIds = async () => { const res = await fetch(`${base}!A:A`, { headers: H, signal: T() }); const j = await res.json();
