@@ -1,219 +1,158 @@
 <!DOCTYPE html>
-<!--
-  admin-dashboard.html
-  AH Student Hub — Admin Dashboard. Ported from AdminDashboard.html.
-
-  EXTENDED with:
-  - A "Tutors" nav item (backend/app/blueprints/admin.py's /tutors and
-    /tutors/create) — a convenience layer over the original design (admin
-    staff editing the Tutors sheet directly still works unchanged; see
-    admin.py's module docstring).
-  - An "Intake Modes" nav item (/intakes, /intakes/update) to add new
-    intakes and edit open/close dates without touching the spreadsheet.
-  - Per-course "Assign Tutor" controls in the registrations table
-    (/registrations/assign-tutor) — this one is NOT just a convenience
-    layer; it's now the authoritative way a student ends up on a tutor's
-    roster. See admin.py's module docstring and
-    docs/ARCHITECTURE_AND_DECISIONS.md, Section 14.
-  - A "Diagnostics" nav item (/email/test) to send a one-off test email
-    through the live SMTP settings and see the exact failure reason
-    immediately, instead of needing a full registration to find out
-    whether outbound email works. See Section 17.
--->
-<html lang="en">
-
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Dashboard — AH Student Hub</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css">
-  <style>
-    /* Table-specific styling not worth adding to the shared stylesheet —
-       used only on this page. */
-    #adminTableScroll { max-height: 60vh; overflow-y: auto; overflow-x: auto; }
-    #adminTableScroll table { border-collapse: separate; border-spacing: 0; }
-    #adminTableScroll thead th { position: sticky; top: 0; background: #1f2937; color: #fff; z-index: 5; }
-  </style>
-</head>
-
-<body class="bg-gray-100">
-
-  <div id="loadingScreen" class="min-h-screen flex flex-col items-center justify-center gap-4 px-4">
-    <div id="loadingSpinnerState">
-      <div class="loader border-4 border-gray-300 rounded-full w-12 h-12 mx-auto"></div>
-      <p class="text-gray-500 text-sm font-bold uppercase tracking-wide mt-4">Loading dashboard...</p>
-    </div>
-    <div id="loadingErrorState" class="hidden text-center max-w-sm">
-      <div class="text-4xl mb-3">⚠️</div>
-      <p class="font-bold text-gray-800 mb-1">This is taking longer than expected</p>
-      <p id="loadingErrorMessage" class="text-sm text-gray-500 mb-5">We couldn't load the dashboard right now.</p>
-      <div class="flex flex-col sm:flex-row gap-3 justify-center">
-        <button type="button" onclick="retryLoadDashboard()" class="theme-bg-accent text-white font-bold py-2 px-6 rounded-lg uppercase tracking-wide text-sm">Try Again</button>
-        <a href="staff-login.html" class="border border-gray-300 text-gray-700 font-bold py-2 px-6 rounded-lg uppercase tracking-wide text-sm inline-block">Back to Login</a>
-      </div>
-    </div>
-    <div id="notLoggedInState" class="hidden text-center max-w-sm">
-      <div class="text-4xl mb-3">🔒</div>
-      <p class="font-bold text-gray-800 mb-1">You're not logged in</p>
-      <p class="text-sm text-gray-500 mb-5">Please log in to view the Admin Dashboard.</p>
-      <a href="staff-login.html" class="theme-bg-accent text-white font-bold py-3 px-6 rounded-lg uppercase tracking-wide shadow-lg inline-block">Go to Login</a>
-    </div>
-  </div>
-
-  <div id="dashboardRoot" class="hidden">
-    <div class="flex min-h-screen">
-      <div id="sidebar-backdrop" class="hidden fixed inset-0 bg-black/50 z-30 md:hidden" onclick="closeMobileSidebar()"></div>
-      <aside id="app-sidebar" class="w-64 bg-white border-r border-gray-200 flex flex-col fixed inset-y-0 left-0 z-40 transform -translate-x-full transition-transform duration-300 ease-in-out md:translate-x-0"></aside>
-
-      <div class="flex-1 flex flex-col md:ml-64">
-        <div id="app-header"></div>
-
-        <main class="flex-1 p-4 md:p-8">
-
-          <div id="view-dashboard" class="view">
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8" id="summaryCardsGrid"></div>
-
-            <div class="bg-white border border-gray-200 rounded-xl p-5 mb-4 shadow-sm">
-              <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <input type="text" id="filterSearch" placeholder="Search name, Student ID, or email..." class="input-light p-3 rounded-lg w-full">
-                <select id="filterCourse" class="input-light p-3 rounded-lg w-full">
-                  <option value="">All Courses</option>
-                </select>
-                <select id="filterCategory" class="input-light p-3 rounded-lg w-full">
-                  <option value="">All Categories</option>
-                </select>
-                <select id="filterStatus" class="input-light p-3 rounded-lg w-full">
-                  <option value="">All Admission Statuses</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-              <div id="adminTableScroll">
-                <table class="w-full text-left text-sm">
-                  <thead>
-                    <tr>
-                      <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs"></th>
-                      <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs">Full Name</th>
-                      <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs">Student ID</th>
-                      <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs">DOB</th>
-                      <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs">Gender</th>
-                      <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs">Email</th>
-                      <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs">Intake Mode</th>
-                      <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs">Total Courses</th>
-                      <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs">Course Fee</th>
-                      <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs">Learning Mode</th>
-                      <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs">Payment Status</th>
-                      <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs">Admission Status</th>
-                    </tr>
-                  </thead>
-                  <tbody id="adminTableBody"></tbody>
-                </table>
-              </div>
-              <p id="adminTableEmpty" class="hidden text-center text-gray-400 py-10">No registrations match these filters.</p>
-            </div>
-          </div>
-
-          <!-- ============================ TUTORS ============================ -->
-          <div id="view-tutors" class="view hidden">
-            <h2 class="text-xl font-black text-gray-800 mb-4 uppercase tracking-wide">Tutors</h2>
-
-            <div class="bg-white border border-gray-200 rounded-xl p-5 mb-6 shadow-sm">
-              <h3 class="font-bold text-gray-700 mb-3 uppercase text-sm tracking-wide">Add Tutor</h3>
-              <p class="text-xs text-gray-500 mb-3">The tutor's email is their login ID — they'll receive the default password and set their own on first login.</p>
-              <div id="addTutorError" class="hidden bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-3"></div>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                <input type="text" id="newTutorName" placeholder="Full Name (optional — tutor can set this)" class="input-light p-3 rounded-lg w-full">
-                <input type="email" id="newTutorEmail" placeholder="Email (login ID)" class="input-light p-3 rounded-lg w-full">
-                <select id="newTutorCourse" class="input-light p-3 rounded-lg w-full">
-                  <option value="">Choose Course</option>
-                  <option value="Graphic Design">Graphic Design</option>
-                  <option value="Revit">Revit</option>
-                  <option value="Lumion">Lumion</option>
-                  <option value="AutoCAD">AutoCAD</option>
-                  <option value="SketchUP">SketchUP</option>
-                  <option value="ArchiCAD">ArchiCAD</option>
-                </select>
-                <select id="newTutorCategory" class="input-light p-3 rounded-lg w-full">
-                  <option value="">Choose Category</option>
-                  <option value="Beginner">Beginner</option>
-                  <option value="Intermediate">Intermediate</option>
-                  <option value="Professional">Professional</option>
-                  <option value="Full Package">Full Package</option>
-                </select>
-              </div>
-              <button type="button" id="addTutorBtn" onclick="addTutorClick()" class="theme-bg-accent hover:bg-orange-600 text-white font-bold py-2 px-6 rounded-lg text-sm uppercase tracking-wide">Add Tutor</button>
-            </div>
-
-            <h3 class="font-bold text-gray-700 mb-3 uppercase text-sm tracking-wide">Current Tutors</h3>
-            <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-x-auto">
-              <table class="w-full text-left text-sm">
-                <thead>
-                  <tr>
-                    <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs bg-gray-800 text-white">Name</th>
-                    <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs bg-gray-800 text-white">Email</th>
-                    <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs bg-gray-800 text-white">Course</th>
-                    <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs bg-gray-800 text-white">Category</th>
-                    <th class="px-4 py-3 font-bold uppercase tracking-wide text-xs bg-gray-800 text-white">Tutor Code</th>
-                  </tr>
-                </thead>
-                <tbody id="tutorsTableBody"></tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- ============================ INTAKE MODES ============================ -->
-          <div id="view-intakes" class="view hidden">
-            <h2 class="text-xl font-black text-gray-800 mb-4 uppercase tracking-wide">Intake Modes</h2>
-            <p class="text-sm text-gray-500 mb-6">An intake is open to new applications only between its opening and closing dates. Add a new intake below, or edit an existing one's dates — changes take effect immediately on the public Apply form.</p>
-
-            <div class="bg-white border border-gray-200 rounded-xl p-5 mb-6 shadow-sm">
-              <h3 class="font-bold text-gray-700 mb-3 uppercase text-sm tracking-wide">Add New Intake</h3>
-              <div id="addIntakeError" class="hidden bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-3"></div>
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-                <input type="text" id="newIntakeLabel" placeholder='e.g. "June 2027 Intake"' class="input-light p-3 rounded-lg w-full">
-                <input type="date" id="newIntakeOpen" class="input-light p-3 rounded-lg w-full">
-                <input type="date" id="newIntakeClose" class="input-light p-3 rounded-lg w-full">
-              </div>
-              <button type="button" id="addIntakeBtn" onclick="addIntakeClick()" class="theme-bg-accent hover:bg-orange-600 text-white font-bold py-2 px-6 rounded-lg text-sm uppercase tracking-wide">Add Intake</button>
-            </div>
-
-            <h3 class="font-bold text-gray-700 mb-3 uppercase text-sm tracking-wide">Current Intakes</h3>
-            <div id="intakesList" class="space-y-3"></div>
-          </div>
-
-          <!-- ============================ DIAGNOSTICS ============================ -->
-          <div id="view-diagnostics" class="view hidden">
-            <h2 class="text-xl font-black text-gray-800 mb-4 uppercase tracking-wide">Diagnostics</h2>
-
-            <div class="bg-white border border-gray-200 rounded-xl p-5 mb-6 shadow-sm max-w-lg">
-              <h3 class="font-bold text-gray-700 mb-2 uppercase text-sm tracking-wide">Send Test Email</h3>
-              <p class="text-xs text-gray-500 mb-3">Sends one email through the exact same SMTP settings as every
-                registration/reset email. If this fails, the error message below is the same one that gets logged to
-                SystemLogs for every failed send — it tells you exactly what to fix.</p>
-              <div id="testEmailError" class="hidden bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-3"></div>
-              <div id="testEmailSuccess" class="hidden bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3 mb-3"></div>
-              <div class="flex flex-col sm:flex-row gap-3">
-                <input type="email" id="testEmailTo" placeholder="you@example.com" class="input-light p-3 rounded-lg w-full">
-                <button type="button" id="testEmailBtn" onclick="sendTestEmailClick()" class="theme-bg-accent hover:bg-orange-600 text-white font-bold py-2 px-6 rounded-lg text-sm uppercase tracking-wide whitespace-nowrap">Send Test</button>
-              </div>
-            </div>
-          </div>
-
-        </main>
-
-        <div id="app-footer"></div>
-      </div>
-    </div>
-  </div>
-
-  <script src="js/config.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/components.js"></script>
-  <script src="js/admin.js"></script>
-
-</body>
-
-</html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin Dashboard | AH Consult</title><meta name="robots" content="noindex,nofollow">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--orange:#ea580c;--orange-d:#c2410c;--black:#111827;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;--ok:#16a34a;--err:#dc2626;--font:'Roboto',Arial,sans-serif}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}body{margin:0;font:14px/1.5 var(--font);color:var(--ink);background:#f3f4f6}
+[hidden]{display:none!important}
+.top{position:sticky;top:0;z-index:30;background:var(--black);color:#fff;display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:3px solid var(--orange)}
+.top img{height:34px;background:#e5e7eb;border-radius:6px;padding:3px}.org{font-weight:900;text-transform:uppercase;letter-spacing:.04em;font-size:13px}.sp{flex:1}
+.top button{background:#1f2937;color:#fff;border:0;border-radius:8px;padding:7px 12px;font:600 12.5px var(--font);cursor:pointer}.top .me{font-size:13px;color:#e5e7eb}
+#burger{display:none}
+.shell{display:grid;grid-template-columns:230px 1fr;min-height:calc(100vh - 55px)}
+nav{background:#fff;border-right:1px solid var(--line);padding:14px 10px;display:flex;flex-direction:column;gap:2px}
+nav button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:10px 12px;font:500 13.5px var(--font);color:var(--ink);cursor:pointer}
+nav button:hover{background:#fff7ed}nav button.act{background:#ffedd5;color:var(--orange-d);font-weight:700}nav .cap{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:10px 12px 4px}
+nav .b{margin-left:auto;background:var(--orange);color:#fff;border-radius:99px;font-size:11px;padding:1px 8px;font-weight:700}
+main{padding:22px;min-width:0}h1{margin:0 0 4px;font-size:1.15rem;font-weight:900;text-transform:uppercase;color:var(--black)}.sub{color:var(--muted);margin:0 0 16px;font-size:13px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:18px}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px}.card small{color:var(--muted);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.05em}.card b{display:block;font-size:1.5rem;font-weight:900;margin-top:2px}.card.o b{color:var(--orange-d)}
+.panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}.panel h3{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.04em}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.bar{display:grid;grid-template-columns:130px 1fr 40px;gap:8px;align-items:center;margin:6px 0;font-size:13px}.bar i{display:block;height:10px;background:#ffedd5;border-radius:6px;overflow:hidden}.bar i s{display:block;height:100%;background:var(--orange)}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.tools input,.tools select{padding:9px 10px;border:1px solid #d1d5db;border-radius:8px;font:inherit;background:#fff;min-width:140px;flex:1}
+.btn{background:var(--orange);color:#fff;border:0;border-radius:8px;padding:9px 14px;font:700 12.5px var(--font);cursor:pointer;white-space:nowrap}.btn:hover{background:var(--orange-d)}.btn.g{background:#fff;color:var(--ink);border:1px solid #d1d5db}.btn.r{background:#fff;color:var(--err);border:1px solid #fecaca}.btn.s{padding:5px 10px;font-size:12px}.btn:disabled{opacity:.6}
+.tw{overflow-x:auto;background:#fff;border:1px solid var(--line);border-radius:12px}table{width:100%;border-collapse:collapse;font-size:13px}th{background:#1f2937;color:#fff;text-align:left;padding:10px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+td{padding:10px 12px;border-top:1px solid #f3f4f6;vertical-align:middle}tr.cl{cursor:pointer}tr.cl:hover td{background:#fff7ed}td small{color:var(--muted)}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;white-space:nowrap}.pill.ok{background:#dcfce7;color:#166534}.pill.wait{background:#fef3c7;color:#92400e}.pill.bad{background:#fee2e2;color:#991b1b}.pill.none{background:#f3f4f6;color:var(--muted)}.pill.info{background:#dbeafe;color:#1e40af}
+.mdl{position:fixed;inset:0;background:rgba(17,24,39,.6);z-index:100;display:flex;justify-content:center;align-items:flex-start;padding:20px 12px;overflow:auto}.mbox{background:#fff;border-radius:12px;padding:20px;max-width:640px;width:100%}
+.mbox h3{margin:0 0 10px}.kv div{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid #f3f4f6;font-size:13px}.kv span{color:var(--muted);font-weight:700;font-size:11.5px;text-transform:uppercase}.kv b{text-align:right;font-weight:500;word-break:break-word}
+textarea,.in{width:100%;padding:9px 10px;border:1px solid #d1d5db;border-radius:8px;font:inherit}.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}
+.photo{width:84px;height:84px;border-radius:50%;object-fit:cover;border:3px solid var(--orange);background:#ffedd5}
+.toast{position:fixed;right:14px;bottom:14px;background:#111827;color:#fff;padding:11px 16px;border-radius:10px;z-index:200;max-width:86vw;font-weight:500;box-shadow:0 8px 20px rgba(0,0,0,.3)}.toast.e{background:#991b1b}
+.chips span{display:inline-block;background:#ffedd5;color:var(--orange-d);border-radius:99px;padding:1px 9px;font-size:12px;font-weight:600;margin:1px 3px 1px 0}
+.act li{list-style:none;padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:13px}.act{margin:0;padding:0}.act small{color:var(--muted)}
+footer{padding:14px;text-align:center;color:var(--muted);font-size:12px}
+@media(max-width:900px){.shell{grid-template-columns:1fr}#burger{display:block}nav{position:fixed;left:0;top:55px;bottom:0;width:240px;z-index:25;transform:translateX(-100%);transition:transform .25s;box-shadow:4px 0 20px rgba(0,0,0,.2);overflow:auto}nav.open{transform:none}main{padding:14px}.two{grid-template-columns:1fr}.me{display:none}}
+@media(max-width:760px){.rt thead{display:none}.rt,.rt tbody{display:block}.rt tr{display:block;border-top:1px solid var(--line);padding:6px 0}.rt td{display:flex;justify-content:space-between;gap:12px;border:0;padding:5px 12px;text-align:right}.rt td:before{content:attr(data-l);font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;text-align:left}.bar{grid-template-columns:90px 1fr 34px}}
+@media print{.top,nav,footer,.tools{display:none}.shell{display:block}}
+</style></head><body>
+<div id="gate" style="padding:40px;text-align:center;color:#6b7280">Checking your access&hellip;</div>
+<div id="app" hidden>
+<header class="top"><button id="burger" aria-label="Menu">&#9776;</button><img src="https://lh3.googleusercontent.com/d/1Qp_nbC6oekgdzjJqGBHwHw125t1ABYUf" alt="" onerror="this.style.display='none'"><span class="org" id="orgName">AH Consult Admin</span><span class="sp"></span><span class="me" id="me"></span><a href="index.html" style="color:#fdba74;text-decoration:none;font-size:12.5px;font-weight:700">Website</a><button id="so">Sign out</button></header>
+<div class="shell"><nav id="nav"></nav><main id="main"></main></div>
+<footer>&copy; <span id="yr"></span> AH Consult Ltd &middot; Signed-in sessions end after 30 minutes of inactivity.</footer></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="js/config.js"></script>
+<script>
+/* ---- Terminology: rename these to reuse the dashboard for a non-academic organisation (clients, services, consultants...) ---- */
+const L={org:'AH Consult Admin',person:'Applicant',people:'Applications',course:'Course',courses:'Courses',lecturer:'Lecturer',lecturers:'Lecturers',intake:'Intake',intakes:'Intakes'};
+const $=s=>document.querySelector(s),C=window.APPLY_CONFIG,esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])),naira=n=>'\u20A6'+Number(n||0).toLocaleString();
+const gate=t=>{$('#gate').hidden=false;$('#gate').innerHTML=t};
+if(!window.supabase||!C||!C.SUPABASE_URL){gate('Setup problem: js/config.js did not load.')}
+else start().catch(e=>gate('Error: '+esc(e.message)+' <br><a href="staff-login.html">Back to sign in</a>'));
+async function start(){
+ const sb=supabase.createClient(C.SUPABASE_URL,C.SUPABASE_ANON_KEY),{data:{session}}=await sb.auth.getSession();
+ if(!session)return location.replace('staff-login.html');
+ const {data:me}=await sb.from('staff').select('*').eq('id',session.user.id).maybeSingle();
+ if(!me||me.status!=='approved'){await sb.auth.signOut();return location.replace('staff-login.html')}
+ $('#gate').hidden=true;$('#app').hidden=false;$('#me').textContent=me.full_name+(me.position?' ('+me.position+')':'');$('#orgName').textContent=L.org;$('#yr').textContent=new Date().getFullYear();
+ const D={apps:[],courses:[],intakes:[],lects:[],lc:[],lectures:[],assigns:[],fb:[],staff:[],audit:[]};let view='overview',F={q:'',st:'',intake:'',course:''};
+ const signOut=async(exp)=>{await sb.auth.signOut();location.replace('staff-login.html'+(exp?'?expired=1':''))};$('#so').onclick=()=>signOut();
+ let idle;const bump=()=>{clearTimeout(idle);idle=setTimeout(()=>signOut(true),30*60*1000)};['click','keydown','touchstart','mousemove'].forEach(e=>addEventListener(e,bump,{passive:true}));bump();
+ const toast=(m,e)=>{const t=document.createElement('div');t.className='toast'+(e?' e':'');t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),e?7000:3500)};
+ const modal=h=>{const m=document.createElement('div');m.className='mdl';m.innerHTML='<div class="mbox">'+h+'</div>';m.addEventListener('click',e=>{if(e.target===m)m.remove()});document.body.appendChild(m);return m};
+ const askNote=(title,ph,btn)=>new Promise(res=>{const m=modal(`<h3>${title}</h3><textarea id="nt" rows="4" placeholder="${ph}"></textarea><div class="row"><button class="btn" id="ok">${btn}</button><button class="btn g" id="no">Cancel</button></div>`);m.querySelector('#no').onclick=()=>{m.remove();res(null)};m.querySelector('#ok').onclick=()=>{const v=m.querySelector('#nt').value.trim();m.remove();res(v)}});
+ /* ---- data ---- */
+ async function load(){const q=(t,s='*')=>sb.from(t).select(s);
+  const [a,c,i,l,lc,lec,as,fb,st,au]=await Promise.all([sb.from('applications').select('*, intakes(label), application_courses(course_code,fee_ngn), profiles(full_name,phone,email)').order('created_at',{ascending:false}).range(0,999),
+   q('courses'),sb.from('intakes').select('*').order('opens_at',{ascending:false}),q('lecturers'),q('lecturer_courses'),q('lectures'),q('assignments'),q('student_feedback'),q('staff'),sb.from('audit_log').select('*').order('id',{ascending:false}).limit(10)]);
+  const err=[a,c,i,l,lc,lec,as,fb,st,au].find(r=>r.error);if(err)throw new Error(err.error.message+' (did you run 007_admin.sql?)');
+  Object.assign(D,{apps:a.data,courses:c.data,intakes:i.data,lects:l.data,lc:lc.data,lectures:lec.data,assigns:as.data,fb:fb.data,staff:st.data,audit:au.data})}
+ const name=a=>a.form_data?.surname?`${a.form_data.firstName} ${a.form_data.surname}`:(a.profiles?.full_name||'-');
+ const stat=a=>{if(a.status==='expired')return['none','Expired'];if(a.status==='pending_payment')return a.payment_review==='rejected'?['bad','Payment queried']:a.payment_claimed_at?['wait','Verify payment']:['none','Awaiting payment'];
+  if(a.status==='paid')return['info','Paid, form pending'];return a.admission_decision==='approved'?['ok','Admitted']:a.admission_decision==='rejected'?['bad','Not admitted']:a.admission_decision==='under_review'?['wait','Under review']:['info','Submitted']};
+ const pill=a=>{const s=stat(a);return`<span class="pill ${s[0]}">${s[1]}</span>`};
+ const live=()=>D.apps.filter(a=>a.status!=='expired'),submitted=a=>['submitted','under_review','approved'].includes(a.status),verify=()=>D.apps.filter(a=>a.status==='pending_payment'&&a.payment_claimed_at&&a.payment_review==='pending');
+ const tbl=(h,rows,cls='')=>`<div class="tw"><table class="rt ${cls}"><thead><tr>${h.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${rows.length?rows.join(''):`<tr><td colspan="${h.length}" style="text-align:center;color:#9ca3af;padding:24px">Nothing to show yet.</td></tr>`}</tbody></table></div>`;
+ const trow=(h,cells,attr='')=>`<tr ${attr}>${cells.map((c,i)=>`<td data-l="${h[i]}">${c}</td>`).join('')}</tr>`;
+ const intakeState=i=>{const n=Date.now();if(!i.is_active||(i.closes_at&&n>+new Date(i.closes_at)))return['bad','Closed'];if(i.opens_at&&n<+new Date(i.opens_at))return['wait','Scheduled'];return['ok','Open']};
+ const day=x=>x?new Date(x).toLocaleDateString('en-CA'):'';
+ /* ---- views ---- */
+ const V={};
+ V.overview=()=>{const A=live(),paid=A.filter(a=>a.status!=='pending_payment'),by={};A.forEach(a=>{const s=stat(a)[1];by[s]=(by[s]||0)+1});const cc={};A.filter(a=>a.status!=='pending_payment').forEach(a=>a.application_courses.forEach(x=>{cc[x.course_code]=(cc[x.course_code]||0)+1}));
+  const bars=(o)=>{const e=Object.entries(o).sort((a,b)=>b[1]-a[1]),m=Math.max(1,...e.map(x=>x[1]));return e.length?e.map(([k,v])=>`<div class="bar"><span>${esc(k)}</span><i><s style="width:${v/m*100}%"></s></i><b>${v}</b></div>`).join(''):'<p class="sub">No data yet.</p>'};
+  return`<h1>Overview</h1><p class="sub">A live snapshot of ${L.people.toLowerCase()}, payments and admissions.</p><div class="cards">
+  <div class="card o"><small>Total ${L.people.toLowerCase()}</small><b>${A.length}</b></div><div class="card"><small>Payments to verify</small><b>${verify().length}</b></div><div class="card"><small>Awaiting payment</small><b>${A.filter(a=>a.status==='pending_payment'&&!a.payment_claimed_at).length}</b></div>
+  <div class="card"><small>Forms submitted</small><b>${A.filter(submitted).length}</b></div><div class="card"><small>Admitted</small><b>${A.filter(a=>a.admission_decision==='approved').length}</b></div><div class="card"><small>Confirmed revenue</small><b style="font-size:1.15rem">${naira(paid.reduce((s,a)=>s+a.total_ngn,0))}</b></div></div>
+  <div class="two"><div class="panel"><h3>${L.people} by status</h3>${bars(by)}</div><div class="panel"><h3>Enrolments by ${L.course.toLowerCase()}</h3>${bars(cc)}</div></div>
+  <div class="panel"><h3>Recent activity</h3><ul class="act">${D.audit.length?D.audit.map(x=>`<li><b>${esc(x.actor_name||'System')}</b> ${esc(x.action.replace(/_/g,' '))} <i>${esc(x.target||'')}</i>${x.note?` - ${esc(x.note)}`:''}<br><small>${new Date(x.created_at).toLocaleString()}</small></li>`).join(''):'<li><small>No admin actions recorded yet.</small></li>'}</ul></div>`};
+ const filtered=()=>live().filter(a=>{const q=F.q.toLowerCase(),hay=(name(a)+' '+(a.student_id||'')+' '+(a.profiles?.email||'')+' '+(a.profiles?.phone||'')+' '+a.pay_reference).toLowerCase();
+  return(!q||hay.includes(q))&&(!F.st||stat(a)[1]===F.st)&&(!F.intake||a.intake_id===F.intake)&&(!F.course||a.application_courses.some(x=>x.course_code===F.course))});
+ const STS=['Awaiting payment','Verify payment','Payment queried','Paid, form pending','Submitted','Under review','Admitted','Not admitted'];
+ V.apps=()=>{const H=['Name','Student ID','Courses','Intake','Total','Status','Date'];const rows=filtered().map(a=>trow(H,[`<b>${esc(name(a))}</b><br><small>${esc(a.profiles?.email||'')}</small>`,esc(a.student_id||'-'),`<span class="chips">${a.application_courses.map(x=>`<span>${esc(x.course_code)}</span>`).join('')}</span>`,esc(a.intakes?.label||''),naira(a.total_ngn),pill(a),day(a.created_at)],`class="cl" data-id="${a.id}"`));
+  return`<h1>${L.people}</h1><p class="sub">Search, filter and open any ${L.person.toLowerCase()} to review, approve or reject.</p><div class="tools"><input id="fq" placeholder="Search name, ID, email, phone or reference" value="${esc(F.q)}">
+  <select id="fs"><option value="">All statuses</option>${STS.map(s=>`<option ${F.st===s?'selected':''}>${s}</option>`).join('')}</select><select id="fi"><option value="">All ${L.intakes.toLowerCase()}</option>${D.intakes.map(i=>`<option value="${i.id}" ${F.intake===i.id?'selected':''}>${esc(i.label)}</option>`).join('')}</select>
+  <select id="fc"><option value="">All ${L.courses.toLowerCase()}</option>${D.courses.map(c=>`<option value="${c.code}" ${F.course===c.code?'selected':''}>${esc(c.name)} (${esc(c.category)})</option>`).join('')}</select><button class="btn g" id="csv">Export CSV</button></div>
+  <p class="sub" id="cnt">${filtered().length} shown</p>${tbl(H,rows)}`};
+ V.payments=()=>{const H=['Name','Reference','Amount','Claimed','Action'];const q=verify().map(a=>trow(H,[`<b>${esc(name(a))}</b><br><small>${esc(a.profiles?.phone||'')}</small>`,esc(a.pay_reference),naira(a.total_ngn),new Date(a.payment_claimed_at).toLocaleString(),`<button class="btn s" data-pay="approved" data-id="${a.id}">Approve</button> <button class="btn s r" data-pay="query" data-id="${a.id}">Query</button>`]));
+  const H2=['Name','Reference','Amount','Confirmed','Status'];const ok=D.apps.filter(a=>a.paid_at).slice(0,25).map(a=>trow(H2,[esc(name(a)),esc(a.pay_reference),naira(a.total_ngn),new Date(a.paid_at).toLocaleString(),pill(a)]));
+  const qd=D.apps.filter(a=>a.status==='pending_payment'&&a.payment_review==='rejected').map(a=>trow(['Name','Reference','Amount','Your query'],[esc(name(a)),esc(a.pay_reference),naira(a.total_ngn),esc(a.payment_note||'')]));
+  return`<h1>Payments</h1><p class="sub">Approve a payment once you have seen it in the bank, or send the applicant a query. They are notified on their dashboard.</p><h3>Waiting for verification (${q.length})</h3>${tbl(H,q)}<h3 style="margin-top:20px">Queried (${qd.length})</h3>${tbl(['Name','Reference','Amount','Your query'],qd)}<h3 style="margin-top:20px">Recently confirmed</h3>${tbl(H2,ok)}`};
+ V.intakes=()=>{const rows=D.intakes.map(i=>{const s=intakeState(i);return`<div class="panel" data-i="${i.id}"><div class="row" style="margin:0;align-items:center"><b>${esc(i.label)}</b><span class="pill ${s[0]}">${s[1]}</span><span class="sp"></span><small>${live().filter(a=>a.intake_id===i.id).length} ${L.people.toLowerCase()}</small></div>
+  <div class="grid" style="margin-top:10px"><label>Opens<input class="in" type="date" data-f="o" value="${day(i.opens_at)}"></label><label>Closes<input class="in" type="date" data-f="c" value="${day(i.closes_at)}"></label></div>
+  <div class="row"><button class="btn s" data-ia="save">Save dates</button>${s[1]==='Closed'?'<button class="btn s g" data-ia="open">Reopen</button>':'<button class="btn s r" data-ia="close">Close now</button>'}</div></div>`}).join('');
+  return`<h1>${L.intakes}</h1><p class="sub">A ${L.intake.toLowerCase()} accepts new applications only between its opening and closing dates.</p><div class="panel"><h3>Create ${L.intake.toLowerCase()}</h3><div class="grid"><input class="in" id="nl" placeholder="e.g. January 2027 Intake"><label>Opens<input class="in" type="date" id="no"></label><label>Closes<input class="in" type="date" id="nc"></label></div><div class="row"><button class="btn" id="addI">Create ${L.intake.toLowerCase()}</button></div></div>${rows||'<p class="sub">No intakes yet.</p>'}`};
+ const lstats=l=>{const cs=D.lc.filter(x=>x.lecturer_id===l.id).map(x=>x.course_code),ids=new Set();D.apps.filter(submitted).forEach(a=>{if(a.application_courses.some(x=>cs.includes(x.course_code)))ids.add(a.id)});
+  const f=D.fb.filter(x=>x.lecturer_id===l.id),r=f.filter(x=>x.rating);return{cs,students:ids.size,lectures:D.lectures.filter(x=>x.lecturer_id===l.id).length,assigns:D.assigns.filter(x=>x.lecturer_id===l.id).length,fb:f,avg:r.length?(r.reduce((s,x)=>s+x.rating,0)/r.length).toFixed(1):'-'}};
+ V.lecturers=()=>{const H=[L.lecturer,L.courses,'Students','Lectures','Assignments','Rating','Action'];const rows=D.lects.map(l=>{const s=lstats(l);return trow(H,[`<b>${esc(l.full_name)}</b>${l.is_active?'':' <span class="pill none">Inactive</span>'}<br><small>${esc(l.email||'')} ${esc(l.phone||'')}</small>`,`<span class="chips">${s.cs.map(c=>`<span>${esc(c)}</span>`).join('')||'<small>None assigned</small>'}</span>`,s.students,s.lectures,s.assigns,s.avg,`<button class="btn s" data-la="assign" data-id="${l.id}">Assign ${L.courses.toLowerCase()}</button> <button class="btn s g" data-la="view" data-id="${l.id}">Performance</button> <button class="btn s g" data-la="toggle" data-id="${l.id}">${l.is_active?'Deactivate':'Activate'}</button>`])});
+  return`<h1>${L.lecturers}</h1><p class="sub">Add ${L.lecturers.toLowerCase()}, assign ${L.courses.toLowerCase()} and track their students and performance.</p><div class="panel"><h3>Add ${L.lecturer.toLowerCase()}</h3><div class="grid"><input class="in" id="ln" placeholder="Full name"><input class="in" id="le" type="email" placeholder="Email"><input class="in" id="lp" placeholder="Phone"></div><div class="row"><button class="btn" id="addL">Add ${L.lecturer.toLowerCase()}</button></div></div>${tbl(H,rows)}
+  <p class="sub" style="margin-top:10px">Lectures, assignments and ratings fill in automatically once ${L.lecturers.toLowerCase()} log them in the tutor portal.</p>`};
+ V.admins=()=>{const H=['Name','Email','Position','Registered','Status'];return`<h1>Administrators</h1><p class="sub">New staff accounts are approved or rejected in the "Admin Registrations" tab of the Google Sheet.</p>${tbl(H,D.staff.map(s=>trow(H,[`<b>${esc(s.full_name)}</b>`,esc(s.email),esc(s.position||''),day(s.created_at),`<span class="pill ${s.status==='approved'?'ok':s.status==='rejected'?'bad':'wait'}">${s.status}</span>`])))}`};
+ /* ---- app drawer ---- */
+ async function openApp(id){const a=D.apps.find(x=>x.id===id),f=a.form_data||{};let photo='';
+  if(a.passport_path){const r=await sb.storage.from('passports').createSignedUrl(a.passport_path,600);if(r.data?.signedUrl)photo=`<img class="photo" src="${esc(r.data.signedUrl)}" alt="Passport">`}
+  const nm=Object.fromEntries(D.courses.map(c=>[c.code,c.name+' ('+c.category+')'])),kv=(k,v)=>v?`<div><span>${k}</span><b>${esc(v)}</b></div>`:'';
+  const pays=a.status==='pending_payment'&&a.payment_claimed_at?`<div class="row"><button class="btn" data-x="pay" data-d="approved">Approve payment</button><button class="btn r" data-x="pay" data-d="query">Send payment query</button></div>`:'';
+  const adm=submitted(a)?`<div class="row"><button class="btn g" data-x="adm" data-d="under_review">Mark under review</button><button class="btn" data-x="adm" data-d="approved">Approve admission</button><button class="btn r" data-x="adm" data-d="rejected">Reject</button></div>`:'';
+  const m=modal(`<div class="row" style="margin:0;align-items:center">${photo}<div><h3 style="margin:0">${esc(name(a))}</h3>${pill(a)} <small>${esc(a.student_id||'No Student ID yet')}</small></div><span class="sp"></span><button class="btn g s" id="cl">Close</button></div>
+  <div class="kv" style="margin-top:12px">${kv('Email',a.profiles?.email)}${kv('Phone',f.phone||a.profiles?.phone)}${kv('Gender',f.gender)}${kv('Date of birth',f.dob)}${kv('State',f.state)}${kv('Address',f.address)}${kv('Education',f.education)}${kv('Occupation',f.occupation)}${kv('Skills',f.skills)}${kv('Laptop',f.laptop)}${kv('Laptop battery',f.battery)}
+  ${kv(L.intake,a.intakes?.label)}${kv('Programme',a.package_code?'Full Package':'Per course')}${kv(L.courses,a.application_courses.map(x=>nm[x.course_code]||x.course_code).join(', '))}${kv('Total',naira(a.total_ngn))}${kv('Payment reference',a.pay_reference)}${kv('Payment note',a.payment_note)}${kv('Admission note',a.admission_note)}${kv('Started',new Date(a.created_at).toLocaleString())}${kv('Submitted',a.submitted_at&&new Date(a.submitted_at).toLocaleString())}</div>
+  ${pays||adm?`<label style="display:block;margin-top:12px;font-weight:700;font-size:12px">Note to the ${L.person.toLowerCase()} (shown on their dashboard)</label><textarea id="nt" rows="3" placeholder="Optional for approvals. Recommended for rejections and queries."></textarea>`:''}${pays}${adm}`);
+  m.querySelector('#cl').onclick=()=>m.remove();
+  m.querySelectorAll('[data-x]').forEach(b=>b.onclick=async()=>{const note=(m.querySelector('#nt')?.value||'').trim(),d=b.dataset.d;
+   if((d==='rejected'||d==='query')&&!note)return toast('Please write a note explaining the decision.',1);b.disabled=true;
+   const r=b.dataset.x==='pay'?await sb.rpc('admin_review_payment',{p_app:id,p_decision:d,p_note:note||null}):await sb.rpc('admin_set_admission',{p_app:id,p_decision:d,p_note:note||null});
+   if(r.error){b.disabled=false;return toast(r.error.message,1)}toast('Saved.');m.remove();await load();render()})}
+ /* ---- events ---- */
+ function csv(){const rows=[['Student ID','Name','Phone','Email','Courses','Intake','Total','Status','Occupation','Education','Laptop','Battery','Skills','Started']].concat(filtered().map(a=>{const f=a.form_data||{};return[a.student_id||'',name(a),f.phone||a.profiles?.phone||'',a.profiles?.email||'',a.application_courses.map(x=>x.course_code).join(' '),a.intakes?.label||'',a.total_ngn,stat(a)[1],f.occupation||'',f.education||'',f.laptop||'',f.battery||'',f.skills||'',a.created_at]}));
+  const b=new Blob([rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n')],{type:'text/csv'}),u=document.createElement('a');u.href=URL.createObjectURL(b);u.download='applications.csv';u.click()}
+ const dateIso=(d,end)=>d?new Date(d+(end?'T23:59:59':'T00:00:00')).toISOString():null;
+ function wire(){const M=$('#main');
+  M.querySelectorAll('tr.cl').forEach(r=>r.onclick=()=>openApp(r.dataset.id));
+  if(view==='apps'){const re=()=>{const t=filtered(),body=M.querySelector('tbody');render(true)};$('#fq').oninput=e=>{F.q=e.target.value;clearTimeout(wire.t);wire.t=setTimeout(()=>{render(true);const i=$('#fq');i.focus();i.setSelectionRange(99,99)},200)};
+   $('#fs').onchange=e=>{F.st=e.target.value;render()};$('#fi').onchange=e=>{F.intake=e.target.value;render()};$('#fc').onchange=e=>{F.course=e.target.value;render()};$('#csv').onclick=csv}
+  M.querySelectorAll('[data-pay]').forEach(b=>b.onclick=async e=>{e.stopPropagation();const id=b.dataset.id,d=b.dataset.pay;let note=null;if(d==='query'){note=await askNote('Send a payment query','Explain what the applicant should check or fix (amount, reference, proof of payment...)','Send query');if(note===null)return;if(!note)return toast('Please write a message.',1)}
+   b.disabled=true;const r=await sb.rpc('admin_review_payment',{p_app:id,p_decision:d,p_note:note});if(r.error){b.disabled=false;return toast(r.error.message,1)}toast(d==='approved'?'Payment approved. Their form is now open.':'Query sent.');await load();render()});
+  if(view==='intakes'){$('#addI').onclick=async()=>{const l=$('#nl').value.trim(),o=$('#no').value,c=$('#nc').value;if(!l||!o||!c)return toast('Enter a name, opening date and closing date.',1);if(c<o)return toast('The closing date must be after the opening date.',1);
+    const d=new Date(o),r=await sb.from('intakes').insert({label:l,year:d.getFullYear(),month:d.getMonth()+1,opens_at:dateIso(o),closes_at:dateIso(c,1),is_active:true});if(r.error)return toast(r.error.message,1);toast('Created.');await load();render()};
+   M.querySelectorAll('[data-ia]').forEach(b=>b.onclick=async()=>{const box=b.closest('[data-i]'),id=box.dataset.i,o=box.querySelector('[data-f=o]').value,c=box.querySelector('[data-f=c]').value,k=b.dataset.ia;let patch;
+    if(k==='close'){if(!confirm('Close this intake now? New applications will be blocked immediately.'))return;patch={is_active:false,closes_at:new Date().toISOString()}}
+    else if(k==='open'){if(!c||new Date(dateIso(c,1))<new Date())return toast('Set a closing date in the future first, then reopen.',1);patch={is_active:true,closes_at:dateIso(c,1),opens_at:dateIso(o)}}
+    else patch={opens_at:dateIso(o),closes_at:dateIso(c,1)};const r=await sb.from('intakes').update(patch).eq('id',id);if(r.error)return toast(r.error.message,1);toast('Saved.');await load();render()})}
+  if(view==='lecturers'){$('#addL').onclick=async()=>{const n=$('#ln').value.trim();if(!n)return toast('Enter the full name.',1);const r=await sb.from('lecturers').insert({full_name:n,email:$('#le').value.trim()||null,phone:$('#lp').value.trim()||null});if(r.error)return toast(r.error.message,1);toast('Added.');await load();render()};
+   M.querySelectorAll('[data-la]').forEach(b=>b.onclick=async()=>{const l=D.lects.find(x=>x.id===b.dataset.id),k=b.dataset.la,s=lstats(l);
+    if(k==='toggle'){const r=await sb.from('lecturers').update({is_active:!l.is_active}).eq('id',l.id);if(r.error)return toast(r.error.message,1);await load();return render()}
+    if(k==='assign'){const m=modal(`<h3>Assign ${L.courses.toLowerCase()} to ${esc(l.full_name)}</h3><div class="grid">${D.courses.map(c=>`<label><input type="checkbox" value="${c.code}" ${s.cs.includes(c.code)?'checked':''}> ${esc(c.name)} <small>(${esc(c.category)})</small></label>`).join('')}</div><div class="row"><button class="btn" id="sv">Save</button><button class="btn g" id="cx">Cancel</button></div>`);
+     m.querySelector('#cx').onclick=()=>m.remove();m.querySelector('#sv').onclick=async()=>{const want=[...m.querySelectorAll('input:checked')].map(x=>x.value);await sb.from('lecturer_courses').delete().eq('lecturer_id',l.id);
+      if(want.length){const r=await sb.from('lecturer_courses').insert(want.map(c=>({lecturer_id:l.id,course_code:c})));if(r.error)return toast(r.error.message,1)}m.remove();toast('Saved.');await load();render()}}
+    if(k==='view'){const m=modal(`<h3>${esc(l.full_name)} - performance</h3><div class="cards"><div class="card"><small>Students</small><b>${s.students}</b></div><div class="card"><small>Lectures</small><b>${s.lectures}</b></div><div class="card"><small>Assignments</small><b>${s.assigns}</b></div><div class="card"><small>Avg rating</small><b>${s.avg}</b></div></div><h3 style="font-size:13px">Student comments</h3><ul class="act">${s.fb.slice(0,10).map(x=>`<li>${x.rating?'&#9733;'.repeat(x.rating)+' ':''}${esc(x.comment||'')}<br><small>${new Date(x.created_at).toLocaleDateString()}</small></li>`).join('')||'<li><small>No comments yet.</small></li>'}</ul><div class="row"><button class="btn g" id="cx">Close</button></div>`);m.querySelector('#cx').onclick=()=>m.remove()}})}}
+ const NAV=[['overview','Overview'],['apps',L.people],['payments','Payments'],['intakes',L.intakes],['lecturers',L.lecturers],['admins','Administrators']];
+ function render(keep){const n=verify().length;$('#nav').innerHTML='<div class="cap">Manage</div>'+NAV.map(([k,t])=>`<button data-v="${k}" class="${k===view?'act':''}">${t}${k==='payments'&&n?`<span class="b">${n}</span>`:''}</button>`).join('');
+  $('#nav').querySelectorAll('button').forEach(b=>b.onclick=()=>{view=b.dataset.v;$('#nav').classList.remove('open');render()});$('#main').innerHTML=V[view]();wire();if(!keep)scrollTo(0,0)}
+ $('#burger').onclick=()=>$('#nav').classList.toggle('open');
+ await load();render();
+ sb.channel('adm').on('postgres_changes',{event:'*',schema:'public',table:'applications'},async()=>{await load();if(!document.querySelector('.mdl')&&!(document.activeElement||{}).matches?.('input,textarea,select'))render(true)}).subscribe();
+}
+</script></body></html>

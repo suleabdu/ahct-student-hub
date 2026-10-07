@@ -59,7 +59,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AH Student Hub | AH Consult Ltd — Architectural & CAD Training</title>
+  <title>AH Consult Ltd | Real Estate, Architecture, Construction &amp; Training Hub — Bauchi, Nigeria</title>
+  <meta name="description" content="AH Consult Ltd: real estate, architectural design, building construction, consultancy, general services, 3D printing and modelling, a materials hub, and a CAD &amp; architecture training hub for young people in Bauchi, Nigeria.">
+  <meta name="theme-color" content="#E67E22">
+  <meta property="og:title" content="AH Consult Ltd | Design. Build. Develop. Train.">
+  <meta property="og:description" content="One company for real estate, architecture, construction, consultancy, 3D modelling and a skills training hub.">
+  <meta property="og:image" content="https://lh3.googleusercontent.com/d/1j4e1Rx5igtD7_4GTuVhz7WlQ3lCyrF68">
+  <meta property="og:type" content="website">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"AH Consult Ltd","logo":"https://lh3.googleusercontent.com/d/1Qp_nbC6oekgdzjJqGBHwHw125t1ABYUf","email":"ahconsultltd02@gmail.com","telephone":"+2348037155105","address":{"@type":"PostalAddress","streetAddress":"Opp Sch. of Agriculture, Dass Road Yelwa","addressLocality":"Bauchi","addressRegion":"Bauchi State","addressCountry":"NG"}}</script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Open+Sans:wght@300;400&display=swap"
     rel="stylesheet">
@@ -218,11 +225,21 @@
     .cta-btn {
       background: linear-gradient(135deg, #E67E22 0%, #D35400 100%);
     }
+
+    /* Scroll-reveal (disabled for visitors who prefer reduced motion) */
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s ease; }
+    .reveal.in { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } html { scroll-behavior: auto; } }
+    .svc-card { transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease; }
+    .svc-card:hover { transform: translateY(-6px); box-shadow: 0 18px 32px -12px rgba(230,126,34,.35); border-color: #E67E22; }
+    section[id] { scroll-margin-top: 80px; }
+    .skip { position: absolute; left: -999px; } .skip:focus { left: 8px; top: 8px; z-index: 100; background: #fff; padding: 8px 12px; border-radius: 6px; }
   </style>
 </head>
 
 <body class="bg-gray-50 text-brandBlack dark:bg-gray-900 dark:text-gray-100 transition-colors duration-300">
 
+  <a href="#home" class="skip">Skip to content</a>
   <!-- NAVIGATION -->
   <nav class="bg-white dark:bg-gray-900 shadow-md fixed w-full z-50 transition-colors duration-300 border-b border-transparent dark:border-gray-800">
     <div class="max-w-7xl mx-auto px-4">
@@ -232,11 +249,12 @@
             class="h-12 md:h-14 w-auto">
         </a>
 
-        <div class="hidden lg:flex space-x-6 items-center">
+        <div class="hidden lg:flex space-x-4 xl:space-x-6 items-center">
           <a href="#home" class="nav-link text-xs text-brandBlack dark:text-gray-200 hover:text-brandOrange transition">HOME</a>
           <a href="#about" class="nav-link text-xs text-brandBlack dark:text-gray-200 hover:text-brandOrange transition">ABOUT US</a>
-          <a href="#programs" class="nav-link text-xs text-brandBlack dark:text-gray-200 hover:text-brandOrange transition">PROGRAMS</a>
-          <a href="#records" class="nav-link text-xs text-brandBlack dark:text-gray-200 hover:text-brandOrange transition">RECORDS</a>
+          <a href="#services" class="nav-link text-xs text-brandBlack dark:text-gray-200 hover:text-brandOrange transition">SERVICES</a>
+          <a href="#programs" class="nav-link text-xs text-brandBlack dark:text-gray-200 hover:text-brandOrange transition">TRAINING</a>
+          <a href="#hub" class="nav-link text-xs text-brandBlack dark:text-gray-200 hover:text-brandOrange transition">3D &amp; MATERIALS</a>
           <a href="#contact" class="nav-link text-xs text-brandBlack dark:text-gray-200 hover:text-brandOrange transition">CONTACT</a>
 
           <span class="w-px h-5 bg-gray-200 dark:bg-gray-700"></span>
@@ -269,8 +287,9 @@
     <div id="mobile-menu" class="hidden bg-white dark:bg-gray-900 border-t dark:border-gray-800 lg:hidden p-4 space-y-4">
       <a href="#home" class="block nav-link text-brandBlack dark:text-white">HOME</a>
       <a href="#about" class="block nav-link text-brandBlack dark:text-white">ABOUT US</a>
-      <a href="#programs" class="block nav-link text-brandBlack dark:text-white">PROGRAMS</a>
-      <a href="#records" class="block nav-link text-brandBlack dark:text-white">RECORDS</a>
+      <a href="#services" class="block nav-link text-brandBlack dark:text-white">SERVICES</a>
+      <a href="#programs" class="block nav-link text-brandBlack dark:text-white">TRAINING</a>
+      <a href="#hub" class="block nav-link text-brandBlack dark:text-white">3D &amp; MATERIALS</a>
       <a href="#contact" class="block nav-link text-brandBlack dark:text-white">CONTACT</a>
       <div class="border-t dark:border-gray-800 pt-4 space-y-3">
         <a href="student-login.html" class="block nav-link text-brandBlack dark:text-white">STUDENT LOGIN</a>
@@ -283,30 +302,106 @@
   <!-- HERO SECTION -->
   <section id="home" class="relative min-h-screen flex items-center justify-center bg-brandBlack overflow-hidden">
     <div class="absolute inset-0">
-      <img src="https://lh3.googleusercontent.com/d/1j4e1Rx5igtD7_4GTuVhz7WlQ3lCyrF68" alt="Hero Background"
-        class="w-full h-full object-cover opacity-50 dark:opacity-40">
+      <img src="https://lh3.googleusercontent.com/d/1j4e1Rx5igtD7_4GTuVhz7WlQ3lCyrF68" alt="AH Consult hero background" class="w-full h-full object-cover opacity-40">
     </div>
-
-    <div class="relative z-10 text-center px-4 max-w-4xl mt-16 py-12">
-      <h1 class="text-white text-3xl md:text-5xl lg:text-6xl mb-6 leading-tight">
-        Welcome to AH' Student Hub, A Center for Expert driven Solutions
-      </h1>
-      <p class="text-gray-300 text-base md:text-lg mb-8 font-light italic">Turning Dreams Into Reality through
-        innovative design and professional training.</p>
-      <div class="flex flex-col sm:flex-row justify-center gap-4">
-        <a href="apply.html"
-          class="bg-brandOrange text-white px-10 py-4 rounded-md text-lg hover:scale-105 transition font-bold shadow-lg uppercase tracking-wider">Apply Now</a>
-        <a href="#about"
-          class="border border-white text-white px-10 py-4 rounded-md text-lg hover:bg-white hover:text-black transition uppercase tracking-wider">About Us</a>
+    <div class="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-black/80"></div>
+    <div class="relative z-10 text-center px-4 max-w-5xl mt-16 py-12">
+      <p class="text-brandOrange uppercase tracking-[0.3em] text-xs md:text-sm mb-5 font-bold">AH Consult Ltd &middot; Bauchi, Nigeria</p>
+      <h1 class="text-white text-4xl md:text-6xl lg:text-7xl mb-6 leading-tight">Design. Build. Develop. <span class="text-brandOrange">Train.</span></h1>
+      <p class="text-gray-200 text-base md:text-xl mb-9 font-light max-w-3xl mx-auto">One company for real estate, architectural design, construction, consultancy and general services, plus a training hub that turns young people into skilled CAD and construction professionals.</p>
+      <div class="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
+        <a href="#services" class="bg-brandOrange text-white px-8 py-4 rounded-md hover:scale-105 transition font-bold shadow-lg uppercase tracking-wider text-sm md:text-base">Explore Our Services</a>
+        <a href="#consult" class="bg-white text-brandBlack px-8 py-4 rounded-md hover:scale-105 transition font-bold shadow-lg uppercase tracking-wider text-sm md:text-base">Request a Consultation</a>
+        <a href="apply.html" class="border border-white text-white px-8 py-4 rounded-md hover:bg-white hover:text-black transition uppercase tracking-wider text-sm md:text-base">Join the Training Hub</a>
       </div>
       <div class="mt-8 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm">
         <a href="student-login.html" class="text-gray-300 hover:text-brandOrange transition underline underline-offset-4">Already registered? Student Login &rarr;</a>
-        <a href="staff-login.html" class="text-gray-300 hover:text-brandOrange transition underline underline-offset-4">Tutor / Admin Login &rarr;</a>
+        <a href="staff-login.html" class="text-gray-300 hover:text-brandOrange transition underline underline-offset-4">Staff Login &rarr;</a>
+      </div>
+    </div>
+    <a href="#services" aria-label="Scroll to services" class="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/70 hover:text-brandOrange animate-bounce"><i class="fa-solid fa-chevron-down text-2xl"></i></a>
+  </section>
+
+  <!-- STATS BAND -->
+  <section class="bg-brandOrange text-white">
+    <div class="max-w-7xl mx-auto px-4 py-8 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+      <div><p class="text-3xl md:text-4xl" style="font-family:Montserrat;font-weight:700">8</p><p class="text-xs md:text-sm uppercase tracking-widest font-normal">Service divisions</p></div>
+      <div><p class="text-3xl md:text-4xl" style="font-family:Montserrat;font-weight:700">7</p><p class="text-xs md:text-sm uppercase tracking-widest font-normal">Design &amp; CAD programmes</p></div>
+      <div><p class="text-3xl md:text-4xl" style="font-family:Montserrat;font-weight:700">3</p><p class="text-xs md:text-sm uppercase tracking-widest font-normal">Levels: Beginner to Professional</p></div>
+      <div><p class="text-3xl md:text-4xl" style="font-family:Montserrat;font-weight:700">1</p><p class="text-xs md:text-sm uppercase tracking-widest font-normal">Team from design to delivery</p></div>
+    </div>
+  </section>
+
+  <!-- SERVICES -->
+  <section id="services" class="py-16 md:py-24 bg-white dark:bg-gray-800 transition-colors duration-300">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="text-center max-w-3xl mx-auto mb-12 reveal">
+        <p class="text-brandOrange uppercase tracking-[0.3em] text-xs font-bold mb-3">What we do</p>
+        <h2 class="text-3xl md:text-4xl text-brandBlack dark:text-white mb-4">Everything you need to plan, build and grow</h2>
+        <p class="text-gray-600 dark:text-gray-400 font-normal">From the first idea to the finished building, and from your first CAD lesson to your first professional project, AH Consult brings the disciplines together under one roof.</p>
+      </div>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6">
+        <article class="svc-card reveal bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 flex flex-col">
+          <div class="w-12 h-12 rounded-xl bg-brandOrange/10 text-brandOrange flex items-center justify-center text-xl mb-4"><i class="fa-solid fa-building"></i></div>
+          <h3 class="text-lg text-brandBlack dark:text-white mb-2">Real Estate</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 font-normal mb-3">Property development, sales, letting and management, and help sourcing the right land or building.</p>
+          <ul class="text-xs text-gray-500 dark:text-gray-400 space-y-1 mb-5 font-normal"><li><i class="fa-solid fa-check text-brandOrange mr-2"></i>Development & sales</li><li><i class="fa-solid fa-check text-brandOrange mr-2"></i>Letting & management</li></ul>
+          <a href="#consult" onclick="pickSvc('Real Estate')" class="mt-auto text-brandOrange font-bold text-sm uppercase tracking-wide hover:underline">Enquire &rarr;</a>
+        </article>
+        <article class="svc-card reveal bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 flex flex-col">
+          <div class="w-12 h-12 rounded-xl bg-brandOrange/10 text-brandOrange flex items-center justify-center text-xl mb-4"><i class="fa-solid fa-pen-ruler"></i></div>
+          <h3 class="text-lg text-brandBlack dark:text-white mb-2">Architectural Design</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 font-normal mb-3">From first sketch to construction drawings, with 3D visualisation so you can see it before it is built.</p>
+          <ul class="text-xs text-gray-500 dark:text-gray-400 space-y-1 mb-5 font-normal"><li><i class="fa-solid fa-check text-brandOrange mr-2"></i>Concept to working drawings</li><li><i class="fa-solid fa-check text-brandOrange mr-2"></i>3D visualisation</li></ul>
+          <a href="#consult" onclick="pickSvc('Architectural Design')" class="mt-auto text-brandOrange font-bold text-sm uppercase tracking-wide hover:underline">Enquire &rarr;</a>
+        </article>
+        <article class="svc-card reveal bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 flex flex-col">
+          <div class="w-12 h-12 rounded-xl bg-brandOrange/10 text-brandOrange flex items-center justify-center text-xl mb-4"><i class="fa-solid fa-helmet-safety"></i></div>
+          <h3 class="text-lg text-brandBlack dark:text-white mb-2">Building Construction</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 font-normal mb-3">Residential and commercial building delivered with careful supervision from foundation to finishing.</p>
+          <ul class="text-xs text-gray-500 dark:text-gray-400 space-y-1 mb-5 font-normal"><li><i class="fa-solid fa-check text-brandOrange mr-2"></i>Residential & commercial</li><li><i class="fa-solid fa-check text-brandOrange mr-2"></i>Site supervision</li></ul>
+          <a href="#consult" onclick="pickSvc('Building Construction')" class="mt-auto text-brandOrange font-bold text-sm uppercase tracking-wide hover:underline">Enquire &rarr;</a>
+        </article>
+        <article class="svc-card reveal bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 flex flex-col">
+          <div class="w-12 h-12 rounded-xl bg-brandOrange/10 text-brandOrange flex items-center justify-center text-xl mb-4"><i class="fa-solid fa-handshake"></i></div>
+          <h3 class="text-lg text-brandBlack dark:text-white mb-2">Consultancy</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 font-normal mb-3">Practical advice on projects, planning and cost, so decisions are made with clear information.</p>
+          <ul class="text-xs text-gray-500 dark:text-gray-400 space-y-1 mb-5 font-normal"><li><i class="fa-solid fa-check text-brandOrange mr-2"></i>Project advisory</li><li><i class="fa-solid fa-check text-brandOrange mr-2"></i>Planning & cost guidance</li></ul>
+          <a href="#consult" onclick="pickSvc('Consultancy')" class="mt-auto text-brandOrange font-bold text-sm uppercase tracking-wide hover:underline">Enquire &rarr;</a>
+        </article>
+        <article class="svc-card reveal bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 flex flex-col">
+          <div class="w-12 h-12 rounded-xl bg-brandOrange/10 text-brandOrange flex items-center justify-center text-xl mb-4"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+          <h3 class="text-lg text-brandBlack dark:text-white mb-2">General Services</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 font-normal mb-3">Renovation, fit-out, maintenance and supply, handled by one dependable team.</p>
+          <ul class="text-xs text-gray-500 dark:text-gray-400 space-y-1 mb-5 font-normal"><li><i class="fa-solid fa-check text-brandOrange mr-2"></i>Renovation & fit-out</li><li><i class="fa-solid fa-check text-brandOrange mr-2"></i>Maintenance & supply</li></ul>
+          <a href="#consult" onclick="pickSvc('General Services')" class="mt-auto text-brandOrange font-bold text-sm uppercase tracking-wide hover:underline">Enquire &rarr;</a>
+        </article>
+        <article class="svc-card reveal bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 flex flex-col">
+          <div class="w-12 h-12 rounded-xl bg-brandOrange/10 text-brandOrange flex items-center justify-center text-xl mb-4"><i class="fa-solid fa-graduation-cap"></i></div>
+          <h3 class="text-lg text-brandBlack dark:text-white mb-2">Training Hub</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 font-normal mb-3">Hands-on CAD, design and construction skills for young people, from beginner to professional.</p>
+          <ul class="text-xs text-gray-500 dark:text-gray-400 space-y-1 mb-5 font-normal"><li><i class="fa-solid fa-check text-brandOrange mr-2"></i>AutoCAD, Revit, SketchUp & more</li><li><i class="fa-solid fa-check text-brandOrange mr-2"></i>Beginner to Professional</li></ul>
+          <a href="#programs" class="mt-auto text-brandOrange font-bold text-sm uppercase tracking-wide hover:underline">Explore programmes &rarr;</a>
+        </article>
+        <article class="svc-card reveal bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 flex flex-col">
+          <div class="w-12 h-12 rounded-xl bg-brandOrange/10 text-brandOrange flex items-center justify-center text-xl mb-4"><i class="fa-solid fa-boxes-stacked"></i></div>
+          <h3 class="text-lg text-brandBlack dark:text-white mb-2">Materials Hub</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 font-normal mb-3">A source for architectural drawing, design and model-making materials.</p>
+          <ul class="text-xs text-gray-500 dark:text-gray-400 space-y-1 mb-5 font-normal"><li><i class="fa-solid fa-check text-brandOrange mr-2"></i>Drawing & drafting supplies</li><li><i class="fa-solid fa-check text-brandOrange mr-2"></i>Model-making materials</li></ul>
+          <a href="#hub" class="mt-auto text-brandOrange font-bold text-sm uppercase tracking-wide hover:underline">See the hub &rarr;</a>
+        </article>
+        <article class="svc-card reveal bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 flex flex-col">
+          <div class="w-12 h-12 rounded-xl bg-brandOrange/10 text-brandOrange flex items-center justify-center text-xl mb-4"><i class="fa-solid fa-cube"></i></div>
+          <h3 class="text-lg text-brandBlack dark:text-white mb-2">3D Printing &amp; Modelling</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400 font-normal mb-3">Professional 3D modelling and printing for scale models, prototypes and presentations.</p>
+          <ul class="text-xs text-gray-500 dark:text-gray-400 space-y-1 mb-5 font-normal"><li><i class="fa-solid fa-check text-brandOrange mr-2"></i>Scale & concept models</li><li><i class="fa-solid fa-check text-brandOrange mr-2"></i>3D modelling</li></ul>
+          <a href="#hub" class="mt-auto text-brandOrange font-bold text-sm uppercase tracking-wide hover:underline">See the hub &rarr;</a>
+        </article>
       </div>
     </div>
   </section>
 
-  <!-- ABOUT SECTION WITH GOOGLE MAP -->
+<!-- ABOUT SECTION WITH GOOGLE MAP -->
   <section id="about" class="py-16 md:py-24 bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
     <div class="max-w-7xl mx-auto px-4 grid md:grid-cols-2 gap-12 items-center">
       <div class="order-2 md:order-1">
@@ -339,6 +434,35 @@
     </div>
   </section>
 
+  <!-- WHY AH CONSULT + PROCESS -->
+  <section class="py-16 md:py-24 bg-brandBlack text-white">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="grid lg:grid-cols-2 gap-12 lg:gap-16 items-start">
+        <div class="reveal">
+          <p class="text-brandOrange uppercase tracking-[0.3em] text-xs font-bold mb-3">Why AH Consult</p>
+          <h2 class="text-3xl md:text-4xl mb-6">One partner. Many disciplines.</h2>
+          <div class="space-y-5">
+            <div class="flex gap-4"><i class="fa-solid fa-diagram-project text-brandOrange text-xl mt-1"></i><div><h3 class="text-base mb-1">Design to delivery</h3><p class="text-gray-400 text-sm font-normal">Architects, builders and consultants work as one team, so nothing is lost between drawing and site.</p></div></div>
+            <div class="flex gap-4"><i class="fa-solid fa-seedling text-brandOrange text-xl mt-1"></i><div><h3 class="text-base mb-1">We grow skills, not just buildings</h3><p class="text-gray-400 text-sm font-normal">Our training hub prepares young people for real work in construction and architecture.</p></div></div>
+            <div class="flex gap-4"><i class="fa-solid fa-location-dot text-brandOrange text-xl mt-1"></i><div><h3 class="text-base mb-1">Rooted in Bauchi, working across Nigeria</h3><p class="text-gray-400 text-sm font-normal">Local knowledge of land, climate and materials, applied to projects wherever you are.</p></div></div>
+            <div class="flex gap-4"><i class="fa-solid fa-comments text-brandOrange text-xl mt-1"></i><div><h3 class="text-base mb-1">Clear communication</h3><p class="text-gray-400 text-sm font-normal">You always know where your project stands and what comes next.</p></div></div>
+          </div>
+        </div>
+        <div class="reveal">
+          <p class="text-brandOrange uppercase tracking-[0.3em] text-xs font-bold mb-3">How we work</p>
+          <h2 class="text-3xl md:text-4xl mb-6">A simple four-step process</h2>
+          <ol class="space-y-4">
+            <li class="flex gap-4 items-start"><span class="shrink-0 w-10 h-10 rounded-full bg-brandOrange flex items-center justify-center font-bold" style="font-family:Montserrat">1</span><div><h3 class="text-base">Consult</h3><p class="text-gray-400 text-sm font-normal">We listen, understand your goals and discuss your budget and timeline.</p></div></li>
+            <li class="flex gap-4 items-start"><span class="shrink-0 w-10 h-10 rounded-full bg-brandOrange flex items-center justify-center font-bold" style="font-family:Montserrat">2</span><div><h3 class="text-base">Design &amp; plan</h3><p class="text-gray-400 text-sm font-normal">Concepts, drawings and 3D views are shaped with you before work begins.</p></div></li>
+            <li class="flex gap-4 items-start"><span class="shrink-0 w-10 h-10 rounded-full bg-brandOrange flex items-center justify-center font-bold" style="font-family:Montserrat">3</span><div><h3 class="text-base">Build &amp; deliver</h3><p class="text-gray-400 text-sm font-normal">Careful supervision keeps quality, cost and schedule on track.</p></div></li>
+            <li class="flex gap-4 items-start"><span class="shrink-0 w-10 h-10 rounded-full bg-brandOrange flex items-center justify-center font-bold" style="font-family:Montserrat">4</span><div><h3 class="text-base">Hand over &amp; support</h3><p class="text-gray-400 text-sm font-normal">We complete the handover and stay available for follow-up and maintenance.</p></div></li>
+          </ol>
+          <a href="#consult" class="inline-block mt-8 bg-brandOrange text-white px-8 py-3 rounded-md font-bold uppercase tracking-wider text-sm hover:scale-105 transition">Start with a consultation</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- PROGRAMS SECTION -->
   <section id="programs" class="py-16 md:py-24 bg-white dark:bg-gray-800 transition-colors duration-300">
     <div class="max-w-7xl mx-auto px-4">
@@ -350,6 +474,33 @@
       </div>
 
       <div id="programs-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8"></div>
+    </div>
+  </section>
+
+  <!-- 3D & MATERIALS HUB -->
+  <section id="hub" class="py-16 md:py-24 bg-white dark:bg-gray-800 transition-colors duration-300">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="text-center max-w-3xl mx-auto mb-12 reveal">
+        <p class="text-brandOrange uppercase tracking-[0.3em] text-xs font-bold mb-3">The Hub</p>
+        <h2 class="text-3xl md:text-4xl text-brandBlack dark:text-white mb-4">Materials and 3D, under one roof</h2>
+        <p class="text-gray-600 dark:text-gray-400 font-normal">Everything a designer, student or builder needs to take an idea from paper to a physical model.</p>
+      </div>
+      <div class="grid md:grid-cols-2 gap-6 md:gap-8">
+        <div class="reveal rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-7">
+          <div class="w-14 h-14 rounded-xl bg-brandOrange text-white flex items-center justify-center text-2xl mb-5"><i class="fa-solid fa-boxes-stacked"></i></div>
+          <h3 class="text-xl text-brandBlack dark:text-white mb-2">Architectural Materials Hub</h3>
+          <p class="text-gray-600 dark:text-gray-400 text-sm font-normal mb-4">A one-stop source for the materials used in architectural design and drawing. Ask us for what you need and we will confirm availability.</p>
+          <ul class="text-sm text-gray-600 dark:text-gray-300 space-y-2 font-normal mb-6"><li><i class="fa-solid fa-check text-brandOrange mr-2"></i>Drawing and drafting supplies</li><li><i class="fa-solid fa-check text-brandOrange mr-2"></i>Model-making materials</li><li><i class="fa-solid fa-check text-brandOrange mr-2"></i>Design tools for students and professionals</li></ul>
+          <a href="#consult" onclick="pickSvc('Materials Hub')" class="text-brandOrange font-bold text-sm uppercase tracking-wide hover:underline">Ask about materials &rarr;</a>
+        </div>
+        <div class="reveal rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-7">
+          <div class="w-14 h-14 rounded-xl bg-brandOrange text-white flex items-center justify-center text-2xl mb-5"><i class="fa-solid fa-cube"></i></div>
+          <h3 class="text-xl text-brandBlack dark:text-white mb-2">3D Printing &amp; Modelling</h3>
+          <p class="text-gray-600 dark:text-gray-400 text-sm font-normal mb-4">Turn drawings into objects you can hold. We produce 3D models and prints that help clients, students and investors understand a design.</p>
+          <ul class="text-sm text-gray-600 dark:text-gray-300 space-y-2 font-normal mb-6"><li><i class="fa-solid fa-check text-brandOrange mr-2"></i>Architectural scale and concept models</li><li><i class="fa-solid fa-check text-brandOrange mr-2"></i>Prototypes and presentation pieces</li><li><i class="fa-solid fa-check text-brandOrange mr-2"></i>3D modelling from your drawings</li></ul>
+          <a href="#consult" onclick="pickSvc('3D Printing & Modelling')" class="text-brandOrange font-bold text-sm uppercase tracking-wide hover:underline">Request a quote &rarr;</a>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -466,6 +617,36 @@
     </div>
   </section>
 
+  <!-- CONSULTATION -->
+  <section id="consult" class="py-16 md:py-24 bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <div class="max-w-6xl mx-auto px-4 grid lg:grid-cols-5 gap-10 items-start">
+      <div class="lg:col-span-2 reveal">
+        <p class="text-brandOrange uppercase tracking-[0.3em] text-xs font-bold mb-3">Let's talk</p>
+        <h2 class="text-3xl md:text-4xl text-brandBlack dark:text-white mb-4">Request a free consultation</h2>
+        <p class="text-gray-600 dark:text-gray-400 font-normal mb-6">Tell us what you have in mind. We reply on WhatsApp, so you can share photos, plans and questions right away.</p>
+        <div class="space-y-3 text-sm">
+          <a href="tel:+2348037155105" class="flex items-center gap-3 text-brandBlack dark:text-white hover:text-brandOrange"><i class="fa-solid fa-phone text-brandOrange w-5"></i>+234 (0) 803 715 5105</a>
+          <a href="tel:+2349034440583" class="flex items-center gap-3 text-brandBlack dark:text-white hover:text-brandOrange"><i class="fa-solid fa-phone text-brandOrange w-5"></i>+234 (0) 903 444 0583</a>
+          <a href="mailto:ahconsultltd02@gmail.com" class="flex items-center gap-3 text-brandBlack dark:text-white hover:text-brandOrange break-all"><i class="fa-solid fa-envelope text-brandOrange w-5"></i>ahconsultltd02@gmail.com</a>
+          <p class="flex items-start gap-3 text-gray-600 dark:text-gray-400"><i class="fa-solid fa-location-dot text-brandOrange w-5 mt-1"></i>Opp Sch. of Agriculture Bauchi, Dass Road Yelwa, Bauchi State, Nigeria.</p>
+        </div>
+      </div>
+      <form id="consultForm" class="lg:col-span-3 reveal bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 md:p-8 shadow-sm" novalidate>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div><label for="cName" class="block text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1">Your name</label><input id="cName" autocomplete="name" class="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brandOrange"></div>
+          <div><label for="cPhone" class="block text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mb-1">Phone</label><input id="cPhone" type="tel" autocomplete="tel" class="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brandOrange"></div>
+        </div>
+        <label for="cSvc" class="block text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mt-4 mb-1">What do you need?</label>
+        <select id="cSvc" class="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brandOrange"><option value="">Select a service</option><option>Real Estate</option><option>Architectural Design</option><option>Building Construction</option><option>Consultancy</option><option>General Services</option><option>Training Hub</option><option>Materials Hub</option><option>3D Printing & Modelling</option></select>
+        <label for="cMsg" class="block text-xs font-bold uppercase tracking-wide text-gray-600 dark:text-gray-300 mt-4 mb-1">Tell us more</label>
+        <textarea id="cMsg" rows="4" class="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brandOrange" placeholder="Location, size, timeline, budget..."></textarea>
+        <p id="cErr" class="text-red-600 text-sm mt-2 hidden"></p>
+        <button type="submit" class="w-full mt-5 bg-brandOrange text-white py-3.5 rounded-md font-bold uppercase tracking-wider hover:bg-black transition"><i class="fa-brands fa-whatsapp mr-2"></i>Send on WhatsApp</button>
+        <p class="text-xs text-gray-500 mt-3 font-normal">This opens WhatsApp with your message ready to send. Nothing is stored on this website.</p>
+      </form>
+    </div>
+  </section>
+
   <!-- FOOTER -->
   <footer id="contact" class="bg-brandBlack dark:bg-black text-white pt-16 md:pt-20 pb-10 transition-colors duration-300 border-t dark:border-gray-800">
     <div class="max-w-7xl mx-auto px-4 grid sm:grid-cols-2 md:grid-cols-4 gap-10 md:gap-16 border-b border-zinc-800 dark:border-gray-800 pb-16 text-sm">
@@ -477,6 +658,9 @@
           A specialized Architectural consultancy and construction firm offering robust quality and sustainable
           solutions across Nigeria.
         </p>
+        <div class="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-xs uppercase tracking-widest text-gray-400">
+          <a href="#services" class="hover:text-brandOrange">Services</a><a href="#programs" class="hover:text-brandOrange">Training</a><a href="#hub" class="hover:text-brandOrange">3D &amp; Materials</a><a href="apply.html" class="hover:text-brandOrange">Apply</a><a href="student-login.html" class="hover:text-brandOrange">Student Login</a><a href="staff-login.html" class="hover:text-brandOrange">Staff Login</a>
+        </div>
       </div>
       <div>
         <h4 class="text-brandOrange uppercase mb-8 tracking-widest font-bold">Headquarters</h4>
@@ -495,6 +679,33 @@
       &copy; 2026 AH Consult Ltd. All right reserved.
     </div>
   </footer>
+
+  <a href="https://wa.me/2348037155105?text=Hello%20AH%20Consult%2C%20I%27d%20like%20to%20make%20an%20enquiry." target="_blank" rel="noopener" aria-label="Chat on WhatsApp"
+    class="fixed bottom-5 right-5 z-40 w-14 h-14 rounded-full bg-green-500 text-white flex items-center justify-center text-3xl shadow-xl hover:scale-110 transition"><i class="fa-brands fa-whatsapp"></i></a>
+  <button id="toTop" aria-label="Back to top" class="hidden fixed bottom-5 left-5 z-40 w-11 h-11 rounded-full bg-brandBlack text-white shadow-xl hover:bg-brandOrange transition"><i class="fa-solid fa-arrow-up"></i></button>
+
+  <script>
+    // Reveal-on-scroll, back-to-top, service pre-select and WhatsApp consultation form
+    (function () {
+      var els = document.querySelectorAll('.reveal');
+      if ('IntersectionObserver' in window) {
+        var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }); }, { threshold: 0.12 });
+        els.forEach(function (el) { io.observe(el); });
+      } else { els.forEach(function (el) { el.classList.add('in'); }); }
+      var top = document.getElementById('toTop');
+      window.addEventListener('scroll', function () { top.classList.toggle('hidden', window.scrollY < 600); }, { passive: true });
+      top.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+      window.pickSvc = function (n) { document.getElementById('cSvc').value = n; };
+      document.getElementById('consultForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var n = document.getElementById('cName').value.trim(), p = document.getElementById('cPhone').value.trim(), s = document.getElementById('cSvc').value, m = document.getElementById('cMsg').value.trim(), err = document.getElementById('cErr');
+        if (!n || !s) { err.textContent = 'Please enter your name and choose a service.'; err.classList.remove('hidden'); return; }
+        err.classList.add('hidden');
+        var t = 'Hello AH Consult, my name is ' + n + (p ? ' (' + p + ')' : '') + '. I am interested in: ' + s + '.' + (m ? ' ' + m : '');
+        window.open('https://wa.me/2348037155105?text=' + encodeURIComponent(t), '_blank', 'noopener');
+      });
+    })();
+  </script>
 
   <script>
     const themeToggleBtn = document.getElementById('theme-toggle');

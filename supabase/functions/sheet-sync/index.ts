@@ -3,7 +3,9 @@
 // Self-test:   GET       /functions/v1/sheet-sync?check=<SHEET_WEBHOOK_SECRET>   (step-by-step checklist with fixes)
 import { admin, cors, json } from "../_shared/lib.ts";
 const T = (ms = 15000) => AbortSignal.timeout(ms);
-const HEAD = ["ApplicationID","StudentID","Name","Phone","Intake","Courses","Total","Status","Created","Paid","Submitted","PaymentClaimed","Payment Review"];
+const APP_HEAD = ["ApplicationID","StudentID","Name","Phone","Intake","Courses","Total","Status","Created","Paid","Submitted","PaymentClaimed","Payment Review","Occupation","EducationLevel","LaptopAvailable","LaptopBattery","Skills"];
+const ADM_HEAD = ["StaffID","Name","Email","Phone","Position","Registered","Approval"];
+const colName = (n: number) => { let s = ""; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
 const b64u = (s: ArrayBuffer | string) => btoa(typeof s === "string" ? s : String.fromCharCode(...new Uint8Array(s))).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const API = "https://sheets.googleapis.com/v4/spreadsheets";
@@ -46,13 +48,17 @@ async function meta(H: any, SID: string) {
     : `Google refused access (${r.status}). Share the Google Sheet with ${sa.client_email} as Editor. ${m}`); }
   return j;
 }
-async function ensureTab(H: any, SID: string, TAB: string) { // create the tab + headers if missing
-  const m = await meta(H, SID); if ((m.sheets ?? []).some((s: any) => s.properties.title === TAB)) return false;
-  const r = await fetch(`${API}/${SID}:batchUpdate`, { method: "POST", headers: H, signal: T(), body: JSON.stringify({ requests: [{ addSheet: { properties: { title: TAB } } }] }) });
-  if (!r.ok) throw new Error("Could not create the '" + TAB + "' tab: " + (await r.text()).slice(0, 200));
-  await fetch(`${API}/${SID}/values/${encodeURIComponent(TAB)}!A1:M1?valueInputOption=RAW`, { method: "PUT", headers: H, signal: T(), body: JSON.stringify({ values: [HEAD] }) });
-  return true;
+async function ensureTab(H: any, SID: string, TAB: string, HEAD: string[]) { // create the tab + headers if missing; top up headers if columns were added
+  const m = await meta(H, SID), last = colName(HEAD.length), rng = `${API}/${SID}/values/${encodeURIComponent(TAB)}!A1:${last}1`;
+  if (!(m.sheets ?? []).some((s: any) => s.properties.title === TAB)) {
+    const r = await fetch(`${API}/${SID}:batchUpdate`, { method: "POST", headers: H, signal: T(), body: JSON.stringify({ requests: [{ addSheet: { properties: { title: TAB } } }] }) });
+    if (!r.ok) throw new Error("Could not create the '" + TAB + "' tab: " + (await r.text()).slice(0, 200));
+  }
+  const cur = await (await fetch(rng, { headers: H, signal: T() })).json();
+  if ((cur.values?.[0]?.length ?? 0) < HEAD.length) await fetch(`${rng}?valueInputOption=RAW`, { method: "PUT", headers: H, signal: T(), body: JSON.stringify({ values: [HEAD] }) });
 }
+const readIds = async (H: any, base: string) => { const res = await fetch(`${base}!A:A`, { headers: H, signal: T() }); const j = await res.json();
+  if (!res.ok) throw new Error(`Sheets read failed (${res.status}): ${j.error?.message ?? ""}`); return (j.values ?? []).map((v: string[]) => v[0]); };
 async function diagnose(db: any) {
   const steps: any[] = [], add = (step: string, ok: boolean, detail = "") => steps.push({ step, ok, detail });
   const SID = Deno.env.get("SHEET_ID"), TAB = Deno.env.get("SHEET_TAB") ?? "Online Applications";
@@ -76,32 +82,42 @@ Deno.serve(async (req) => {
   try {
     const r = await db.from("sheet_outbox").select("*").eq("done", false).lt("attempts", 5).order("id").limit(25); jobs = r.data ?? [];
     if (!jobs.length) return json({ synced: 0, note: "nothing pending" });
-    const SID = Deno.env.get("SHEET_ID"), TAB = Deno.env.get("SHEET_TAB") ?? "Online Applications";
+    const SID = Deno.env.get("SHEET_ID"), APP_TAB = Deno.env.get("SHEET_TAB") ?? "Online Applications", ADM_TAB = Deno.env.get("ADMIN_TAB") ?? "Admin Registrations";
     if (!SID) throw new Error("Missing secret SHEET_ID"); if (!hasSA()) throw new Error("Missing secret GOOGLE_SERVICE_ACCOUNT_B64");
-    const H = { Authorization: `Bearer ${await token()}`, "Content-Type": "application/json" }, base = `${API}/${SID}/values/${encodeURIComponent(TAB)}`;
-    await ensureTab(H, SID, TAB);
-    const readIds = async () => { const res = await fetch(`${base}!A:A`, { headers: H, signal: T() }); const j = await res.json();
-      if (!res.ok) throw new Error(`Sheets read failed (${res.status}): ${j.error?.message ?? ""}`); return (j.values ?? []).map((v: string[]) => v[0]); };
-    let ids: string[] = await readIds(), ok = 0, failed = 0;
+    const H = { Authorization: `Bearer ${await token()}`, "Content-Type": "application/json" };
+    const tabs: Record<string, { base: string; ids: string[] }> = {};
+    const open = async (name: string, head: string[]) => { if (!tabs[name]) { await ensureTab(H, SID, name, head); const base = `${API}/${SID}/values/${encodeURIComponent(name)}`; tabs[name] = { base, ids: await readIds(H, base) }; } return tabs[name]; };
+    let ok = 0, failed = 0;
+    const done = (id: number, note?: string) => db.from("sheet_outbox").update({ done: true, last_error: note ?? null }).eq("id", id);
     for (const j of jobs) {
       try {
-        const { data: a } = await db.from("applications").select("*, intakes(label), application_courses(course_code), profiles(full_name,phone)").eq("id", j.application_id).single();
-        if (!a) { await db.from("sheet_outbox").update({ done: true, last_error: "skipped: application no longer exists" }).eq("id", j.id); continue; }
-        const f = a.form_data ?? {};
-        const row = [a.id, a.student_id ?? "", f.surname ? `${f.surname} ${f.firstName}`.trim() : a.profiles?.full_name ?? "", f.phone ?? a.profiles?.phone ?? "", a.intakes?.label,
-          (a.package_code ? "[FULL PACKAGE] " : "") + a.application_courses.map((c: any) => c.course_code).join(", "), a.total_ngn, a.status, a.created_at, a.paid_at ?? "", a.submitted_at ?? "", a.payment_claimed_at ?? "", cap(a.payment_review)];
-        let i = ids.indexOf(a.id); if (i < 0) { ids = await readIds(); i = ids.indexOf(a.id); } // re-read just before appending: no duplicate rows
-        const u = i >= 0 ? `${base}!A${i + 1}?valueInputOption=USER_ENTERED` : `${base}!A:A:append?valueInputOption=USER_ENTERED&insertDataOption=OVERWRITE`;
+        let name: string, head: string[], row: any[], id: string;
+        if (j.kind === "staff") {
+          const { data: s } = await db.from("staff").select("*").eq("id", j.application_id).maybeSingle();
+          if (!s) { await done(j.id, "skipped: staff record no longer exists"); continue; }
+          name = ADM_TAB; head = ADM_HEAD; id = s.id; row = [s.id, s.full_name, s.email, s.phone ?? "", s.position ?? "", s.created_at, cap(s.status)];
+        } else {
+          const { data: a } = await db.from("applications").select("*, intakes(label), application_courses(course_code), profiles(full_name,phone)").eq("id", j.application_id).single();
+          if (!a) { await done(j.id, "skipped: application no longer exists"); continue; }
+          const f = a.form_data ?? {};
+          name = APP_TAB; head = APP_HEAD; id = a.id;
+          row = [a.id, a.student_id ?? "", f.surname ? `${f.surname} ${f.firstName}`.trim() : a.profiles?.full_name ?? "", f.phone ?? a.profiles?.phone ?? "", a.intakes?.label,
+            (a.package_code ? "[FULL PACKAGE] " : "") + a.application_courses.map((c: any) => c.course_code).join(", "), a.total_ngn, a.status, a.created_at, a.paid_at ?? "", a.submitted_at ?? "",
+            a.payment_claimed_at ?? "", cap(a.payment_review), f.occupation ?? "", f.education ?? "", f.laptop ?? "", f.battery ?? "", f.skills ?? ""];
+        }
+        const t = await open(name, head);
+        let i = t.ids.indexOf(id); if (i < 0) { t.ids = await readIds(H, t.base); i = t.ids.indexOf(id); } // re-read just before appending: no duplicate rows
+        const u = i >= 0 ? `${t.base}!A${i + 1}?valueInputOption=USER_ENTERED` : `${t.base}!A:A:append?valueInputOption=USER_ENTERED&insertDataOption=OVERWRITE`;
         const res = await fetch(u, { method: i >= 0 ? "PUT" : "POST", headers: H, signal: T(), body: JSON.stringify({ values: [row] }) });
         if (!res.ok) throw new Error(`Sheets write failed (${res.status}): ${(await res.text()).slice(0, 300)}`);
-        if (i < 0) ids.push(a.id);
-        await db.from("sheet_outbox").update({ done: true, last_error: null }).eq("id", j.id); ok++;
+        if (i < 0) t.ids.push(id);
+        await done(j.id); ok++;
       } catch (err) { failed++; await db.from("sheet_outbox").update({ attempts: j.attempts + 1, last_error: String(err).slice(0, 500) }).eq("id", j.id); }
     }
     return json({ synced: ok, failed });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e); console.error("SHEET-SYNC ERROR:", msg);
-    if (jobs.length) await db.from("sheet_outbox").update({ last_error: msg.slice(0, 500) }).in("id", jobs.map((j) => j.id));
+    if (jobs.length) await db.from("sheet_outbox").update({ last_error: msg.slice(0, 500) }).in("id", jobs.map((j) => j.id)); // config problems do not burn retry attempts
     return json({ error: msg }, 500);
   }
 });

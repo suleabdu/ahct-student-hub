@@ -1,7 +1,6 @@
 // Final step: validate form + passport, assign Student ID, mark 'submitted'.
-import { admin, cors, json, userFrom } from "../_shared/lib.ts";
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+import { admin, json, safe, userFrom } from "../_shared/lib.ts";
+Deno.serve(safe(async (req) => {
   const user = await userFrom(req); if (!user) return json({ error: "Please sign in again." }, 401);
   const { applicationId, form, passportPath } = await req.json();
   const e: Record<string, string> = {};
@@ -12,6 +11,13 @@ Deno.serve(async (req) => {
   if (!form?.gender) e.gender = "Select your gender.";
   if (!form?.address?.trim()) e.address = "Enter your address.";
   if (!form?.state) e.state = "Select your state.";
+  const EDU = ["Primary", "Secondary", "Bachelor Degree", "Masters Degree", "Ph.D Holder"], OCC = ["Civil Servant", "Private Worker", "Student"], BAT = ["3 Hours and Above", "Less than 3 hours", "Desktop"];
+  if (!EDU.includes(form?.education)) e.education = "Select your education level.";
+  if (!OCC.includes(form?.occupation)) e.occupation = "Select your occupation.";
+  if (!form?.skills?.trim() || form.skills.length > 300) e.skills = "Tell us your skills (up to 300 characters).";
+  if (!["Yes", "No"].includes(form?.laptop)) e.laptop = "Do you have a laptop?";
+  else if (form.laptop === "Yes" && !BAT.includes(form?.battery)) e.battery = "Select your laptop battery duration.";
+  if (form?.laptop === "No") form.battery = "Not applicable";
   if (!passportPath) e.passport = "Upload your passport photograph.";
   if (Object.keys(e).length) return json({ errors: e }, 422);
   const db = admin();
@@ -23,4 +29,4 @@ Deno.serve(async (req) => {
   const { data: id } = await db.rpc("next_student_id", { p_intake: app.intake_id });
   await db.from("applications").update({ status: "submitted", form_data: form, passport_path: passportPath, student_id: id, submitted_at: new Date().toISOString() }).eq("id", app.id);
   return json({ studentId: id });
-});
+}));
