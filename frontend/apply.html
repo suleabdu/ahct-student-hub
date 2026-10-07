@@ -71,6 +71,15 @@ footer{font-size:12px;padding:12px}.notice{font-size:13px;padding:11px}.kv div{f
 .btn2{background:#fff;color:var(--ink);border:1px solid var(--line)}.btn2:hover{background:#f3f4f6;transform:none}
 @media(max-width:820px){.panel{padding:16px}main{padding:12px}.nav2 button{min-width:0}}
 @media(max-width:520px){.opts{grid-template-columns:1fr}.wz li{font-size:0;gap:0}.wz li span{font-size:11px;margin:0 auto}.wz li.on{font-size:11px;gap:6px}.course{flex-wrap:wrap}.hide-sm{display:none}.acct strong{font-size:18px;word-break:break-all}.nav2{flex-direction:column-reverse}.nav2 #nx,.nav2 button{max-width:none;width:100%}.authwrap{padding:20px 14px}.total span:last-child{font-size:17px}}
+.mdl{position:fixed;inset:0;background:rgba(17,24,39,.6);z-index:100;display:grid;place-items:center;padding:16px}.mbox{background:#fff;border-radius:12px;padding:22px;max-width:480px;width:100%;max-height:90vh;overflow:auto}
+.cons{margin:0 0 6px;padding-left:18px;font-size:13px;line-height:1.55;color:#374151}.cons li{margin-bottom:6px}
+.stat{border-radius:10px;padding:14px;margin:6px 0 14px;border:1px solid}.stat b{display:block;font-size:15px}.stat span{font-size:13px}
+.stat.ok{background:#f0fdf4;border-color:#bbf7d0;color:#166534}.stat.wait{background:#fffbeb;border-color:#fde68a;color:#92400e}.stat.bad{background:#fef2f2;border-color:#fecaca;color:#991b1b}.stat.none{background:#f9fafb;border-color:var(--line);color:var(--muted)}
+.acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.acts button{width:auto;margin:0}
+.hist{list-style:none;margin:8px 0 0;padding:0}.hist li{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:10px 0;border-bottom:1px solid #f3f4f6;font-size:13px}.hist span{grid-column:1;color:var(--muted)}.hist small{grid-column:2;grid-row:1/3;align-self:center;color:var(--muted)}
+.rh{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid var(--orange);padding-bottom:10px;margin-bottom:10px;gap:8px;flex-wrap:wrap}.rh span{color:var(--orange-d);font-weight:700;text-transform:uppercase;font-size:12px}
+@media print{button,.noprint{display:none!important}.panel{border:0;box-shadow:0;padding:0}}
+@media(max-width:520px){.acts button{width:100%}.hist li{grid-template-columns:1fr}.hist small{grid-column:1;grid-row:auto}}
 </style></head><body>
 <div id="auth" hidden>
  <aside class="hero"><img class="lg" alt="" onerror="this.style.display='none'">
@@ -83,7 +92,7 @@ footer{font-size:12px;padding:12px}.notice{font-size:13px;padding:11px}.kv div{f
   <div class="menuw"><button class="chip" id="gear" aria-label="Settings">&#9881;<span class="hide-sm"> Settings</span></button>
    <div class="menu" id="menu" hidden><button data-a="profile">My profile</button><button data-a="pw">Change password</button><button data-a="out">Sign out</button></div></div></header>
  <div class="shell"><nav id="side"><div class="cap">Application steps</div><div id="navsteps"></div><div class="grow"></div>
-   <div class="cap">Account</div><button class="nv" id="nvProfile"><span class="n">&#9786;</span>My profile</button><button class="nv out" id="nvOut"><span class="n">&#10140;</span>Sign out</button></nav>
+   <div class="cap">Account</div><button class="nv" id="nvPay"><span class="n">&#8358;</span>Payment status</button><button class="nv" id="nvProfile"><span class="n">&#9786;</span>My profile</button><button class="nv out" id="nvOut"><span class="n">&#10140;</span>Sign out</button></nav>
   <main><div id="msgB"></div><div class="panel" id="content"></div></main></div>
  <footer>&copy; <span id="yr"></span> AH Consult Ltd. All rights reserved. Need help? Contact the AH Consult training office.</footer>
 </div>
@@ -106,7 +115,7 @@ function startApp(){
 const C=window.APPLY_CONFIG,sb=supabase.createClient(C.SUPABASE_URL,C.SUPABASE_ANON_KEY);
 document.querySelectorAll('.lg').forEach(i=>{if(C.LOGO_URL)i.src=C.LOGO_URL;else i.style.display='none'});if(C.AUTH_IMAGE_URL)document.querySelector('.hero').style.backgroundImage=`linear-gradient(180deg,rgba(17,24,39,.55),rgba(17,24,39,.85)),url('${C.AUTH_IMAGE_URL}')`;
 let view;const $=s=>document.querySelector(s),naira=n=>'₦'+Number(n).toLocaleString();
-const S={w:null,pkgs:[],user:null,profile:null,nav:0,app:null,intakes:[],courses:[],picked:new Set(),intakeId:null};
+const S={pre:null,w:null,pkgs:[],user:null,profile:null,nav:0,app:null,intakes:[],courses:[],picked:new Set(),intakeId:null};
 const STATES=["Abia","Adamawa","Akwa Ibom","Anambra","Bauchi","Bayelsa","Benue","Borno","Cross River","Delta","Ebonyi","Edo","Ekiti","Enugu","FCT","Gombe","Imo","Jigawa","Kaduna","Kano","Katsina","Kebbi","Kogi","Kwara","Lagos","Nasarawa","Niger","Ogun","Ondo","Osun","Oyo","Plateau","Rivers","Sokoto","Taraba","Yobe","Zamfara"];
 function step(n){if(S.user)markNav(n-1)}
 function note(t,k='e'){$(S.user?'#msgB':'#msgA').innerHTML=t?`<div class="notice ${k}" role="alert">${t}</div>`:''}
@@ -154,7 +163,8 @@ async function pickView(){step(1);
  const now=Date.now();S.intakes=(i.data||[]).filter(x=>(!x.opens_at||now>=+new Date(x.opens_at))&&(!x.closes_at||now<=+new Date(x.closes_at)));S.courses=c.data||[];S.pkgs=p.data||[];
  if(!S.intakes.length){view.innerHTML='<h2>Applications are closed</h2><p class="sub">There is no open intake right now. Please check back soon.</p>';return}
  if(!S.w){S.w={n:1,mode:'',cat:'',intake:S.intakes[0].id};const q=new URLSearchParams(location.search),m=q.get('course')&&S.courses.find(x=>x.name.toLowerCase()===q.get('course').toLowerCase()&&x.category===q.get('category'));
-  if(m){S.w.mode='cat';S.w.cat=m.category;S.picked.add(m.code);S.w.n=2}}
+  if(m){S.w.mode='cat';S.w.cat=m.category;S.picked.add(m.code);S.w.n=2}
+  if(S.pre){const pr=S.pre;S.pre=null;S.picked=new Set(pr.codes);const f=S.courses.find(x=>S.picked.has(x.code));S.w.mode=pr.pkg&&S.pkgs[0]?'pkg':'cat';S.w.cat=S.w.mode==='pkg'?'':(f?f.category:'');if(S.intakes.some(x=>x.id===pr.intake))S.w.intake=pr.intake;S.w.n=1}}
  wizard()}
 function wizard(){const w=S.w,n=w.n,P=pkg(),opts=cats().map(c=>({mode:'cat',cat:c,t:c,s:'Pay per course'}));
  if(S.pkgs[0])opts.push({mode:'pkg',cat:'',t:S.pkgs[0].name+' - '+naira(S.pkgs[0].fee_ngn),s:'One course from each level, Beginner to Professional',pk:1});
@@ -182,8 +192,9 @@ let ch,poll;
 async function payView(){step(2);const a=S.app;
  view.innerHTML=`<h2>Make your payment</h2><p class="sub">Transfer the exact amount below. This page unlocks your form automatically once the payment arrives (usually within a few minutes).</p>
  <div class="acct"><div>${a.pay_bank||''}</div><strong id="acn">${a.pay_account}</strong> <button class="ghost" id="cp" style="width:auto;margin:0;padding:4px 8px">Copy</button><div>Amount: <b>${naira(a.total_ngn)}</b></div><div style="margin-top:6px">Payment reference: <b style="font-size:14px">${esc(a.pay_reference)}</b></div></div>
- <div class="notice i" id="ps">Waiting for your payment...</div><button class="ghost" id="chk">I have paid, check now</button>`;
+ <div class="notice i" id="ps">Waiting for your payment...</div><button class="ghost" id="chk">I have paid, check now</button><p class="sub" style="margin:10px 0 0">Not ready to pay? <a href="#" id="edt" style="color:var(--orange-d);font-weight:700">Go back and change my courses</a>. We will explain what happens first.</p>`;
  $('#cp').onclick=()=>{navigator.clipboard?.writeText(a.pay_account);$('#cp').textContent='Copied'};
+ $('#edt').onclick=e=>{e.preventDefault();editSelection()};
  const paint=d=>{const el=$('#ps');if(!el)return;if(d.payment_review==='rejected'){el.className='notice e';el.textContent='We could not confirm your payment. Please check the amount and reference, then tap "I have paid" again or contact the training office.'}else if(d.payment_claimed_at){el.className='notice i';el.textContent='Payment submitted. Our team is confirming it and your form will open automatically. You can keep this page open.'}else{el.className='notice i';el.textContent='Waiting for your payment...'}};
  const check=async()=>{const {data}=await sb.from('applications').select('*').eq('id',a.id).single();if(!data)return;S.app=data;if(data.status!=='pending_payment'){cleanup();route();return}paint(data)};
  paint(a);
@@ -225,13 +236,13 @@ const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&g
 function stage(){const a=S.app;if(!a)return 0;if(a.status==='pending_payment')return 1;if(a.status==='paid')return 2;return 3}
 function buildNav(){const st=stage(),items=['Courses & Intake','Payment','Application Form','Admission Status'];
  $('#navsteps').innerHTML=items.map((t,i)=>`<button class="nv ${i<st?'done':''} ${S.nav===i?'act':''} ${i>st?'lock':''}" data-i="${i}"><span class="n">${i<st?'&#10003;':i+1}</span>${t}</button>`).join('');
- $('#navsteps').querySelectorAll('.nv').forEach(b=>b.onclick=()=>go(+b.dataset.i));$('#nvProfile').classList.toggle('act',S.nav==='p')}
+ $('#navsteps').querySelectorAll('.nv').forEach(b=>b.onclick=()=>go(+b.dataset.i));$('#nvProfile').classList.toggle('act',S.nav==='p');$('#nvPay').classList.toggle('act',S.nav==='ps')}
 function markNav(i){S.nav=i;if(S.user){buildNav();$('#side').classList.remove('open')}}
 async function go(i){const st=stage();note('');view=$('#content');if(i>st)return note('Please complete the previous step first.','i');if(i===st)return route();
  markNav(i);const [ac,cs]=await Promise.all([sb.from('application_courses').select('course_code,fee_ngn').eq('application_id',S.app.id),sb.from('courses').select('code,name,category')]);
  const nm=Object.fromEntries((cs.data||[]).map(c=>[c.code,c.name+' ('+c.category+')']));
  view.innerHTML=['<h2>Courses &amp; Intake</h2><p class="sub">'+(S.app.package_code?'Full Package. ':'')+'Your selection is locked in.</p><div class="kv">'+(ac.data||[]).map(x=>`<div>${esc(nm[x.course_code]||x.course_code)}<b>${S.app.package_code?'Included':naira(x.fee_ngn)}</b></div>`).join('')+'</div><div class="total"><span>Total</span><span>'+naira(S.app.total_ngn)+'</span></div>',
-  '<h2>Payment</h2><div class="notice i">Payment of '+naira(S.app.total_ngn)+' has been received. Thank you.</div>','<h2>Application Form</h2><div class="notice i">Your application form has been submitted.</div>'][i]}
+  '<h2>Payment</h2><div class="notice i">Payment of '+naira(S.app.total_ngn)+' has been received. Thank you.</div>','<h2>Application Form</h2><div class="notice i">Your application form has been submitted.</div>'][i];if(i===0&&S.app.status==='pending_payment'){view.insertAdjacentHTML('beforeend','<button id="edt2">Edit my selection</button><p class="sub" style="margin-top:8px">You can change your courses until you pay. You will see what changes before you confirm.</p>');$('#edt2').onclick=editSelection}}
 async function profileView(){view=$('#content');markNav('p');note('');const p=S.profile||{};
  view.innerHTML=`<h2>My Profile</h2><p class="sub">Your account details.</p><div class="kv"><div><span>Full name</span>${esc(p.full_name||'-')}</div><div><span>Phone</span>${esc(p.phone||'-')}</div><div><span>Email</span>${esc(S.user.email)}</div>${S.app?.student_id?`<div><span>Student ID</span>${esc(S.app.student_id)}</div>`:''}</div>
  <button id="pw">Send password reset link</button>`;$('#pw').onclick=resetPw}
@@ -240,7 +251,7 @@ async function signOut(){cleanup();await sb.auth.signOut();location.reload()}
 function showAuth(){$('#app').hidden=true;$('#auth').hidden=false;authView('up')}
 function showApp(){$('#auth').hidden=true;$('#app').hidden=false;view=$('#content');const n=S.profile?.full_name||S.user.email;$('#uname').textContent=n;$('#av').textContent=n[0].toUpperCase();$('#yr').textContent=new Date().getFullYear();buildNav()}
 function wire(){$('#burger').onclick=()=>$('#side').classList.toggle('open');$('#gear').onclick=e=>{e.stopPropagation();$('#menu').hidden=!$('#menu').hidden};document.onclick=()=>$('#menu').hidden=true;
- $('#chipP').onclick=$('#nvProfile').onclick=profileView;$('#nvOut').onclick=signOut;
+ $('#chipP').onclick=$('#nvProfile').onclick=profileView;$('#nvPay').onclick=statusView;$('#nvOut').onclick=signOut;
  $('#menu').querySelectorAll('button').forEach(b=>b.onclick=()=>({profile:profileView,pw:resetPw,out:signOut})[b.dataset.a]())}
 function doneView(){step(4);const a=S.app,st=a.status,on=[1,st==='under_review'||st==='approved',st==='approved'];
  view.innerHTML=`<h2>Admission Status</h2><p class="sub">Keep your Student ID safe. You will need it for all communication.</p><div class="id">${esc(a.student_id)}</div>
@@ -249,9 +260,36 @@ function doneView(){step(4);const a=S.app,st=a.status,on=[1,st==='under_review'|
 async function boot(){const {data:{session}}=await sb.auth.getSession();if(!session){S.user=null;return showAuth()}
  S.user=session.user;const [p,a]=await Promise.all([sb.from('profiles').select('*').eq('id',session.user.id).maybeSingle(),sb.from('applications').select('*').eq('user_id',session.user.id).not('status','in','(expired,rejected)').maybeSingle()]);
  S.profile=p.data;S.app=a.data;showApp();route()}
+/* PAYMENT STATUS, RECEIPT, EDIT-BEFORE-PAY */
+function ask(title,body,yes,no){return new Promise(res=>{const m=document.createElement('div');m.className='mdl';m.innerHTML=`<div class="mbox" role="dialog" aria-modal="true"><h3>${title}</h3>${body}<div class="nav2"><button class="btn2" id="mn">${no||'Cancel'}</button>${yes?`<button id="my">${yes}</button>`:''}</div></div>`;document.body.appendChild(m);const done=v=>{m.remove();res(v)};m.querySelector('#mn').onclick=()=>done(false);if(yes)m.querySelector('#my').onclick=()=>done(true)})}
+async function refreshApp(){const {data}=await sb.from('applications').select('*').eq('user_id',S.user.id).not('status','in','(expired,rejected)').maybeSingle();S.app=data;return data}
+async function editSelection(){const a=S.app;if(!a||a.status!=='pending_payment')return;
+ if(a.payment_claimed_at&&a.payment_review==='pending')return ask('Courses cannot be changed now','<p class="sub">You have already told us you paid, so your payment is being verified. To change your courses, please contact the training office with your payment reference <b>'+esc(a.pay_reference)+'</b>.</p>',null,'OK');
+ const ok=await ask('Change your courses?',`<p class="sub">Please read before you continue:</p><ul class="cons"><li>Your current payment account and reference (<b>${esc(a.pay_reference)}</b>) will be <b>cancelled</b> and replaced with a new one.</li><li><b>Do not pay into the old account.</b> Money sent to a cancelled account is not matched automatically. You would have to contact the office with proof of payment.</li><li>Your total may change. You will see the new amount before you pay.</li><li>If you have already made a transfer, do not change your courses. Contact the training office instead.</li></ul>`,'Yes, change my courses','Keep my selection');
+ if(!ok)return;const {data:ac}=await sb.from('application_courses').select('course_code').eq('application_id',a.id);
+ const r=await call('cancel-application',{applicationId:a.id});if(!r.ok)return note(esc(r.error||'Could not cancel your application. Please try again.'));
+ S.pre={codes:(ac||[]).map(x=>x.course_code),pkg:!!a.package_code,intake:a.intake_id};S.app=null;S.w=null;cleanup();buildNav();view=$('#content');note('Your previous payment details were cancelled. Update your selection below.','i');pickView()}
+async function statusView(){view=$('#content');markNav('ps');note('');await refreshApp();buildNav();
+ const [ap,py]=await Promise.all([sb.from('applications').select('*').eq('user_id',S.user.id).order('created_at',{ascending:false}),sb.from('payments').select('*').order('paid_at',{ascending:false})]);
+ const a=S.app,paid=a&&a.status!=='pending_payment';let b=['none','No active application','Start an application from Courses & Intake.'];
+ if(a&&!paid)b=a.payment_review==='rejected'?['bad','Payment not confirmed','We could not confirm your payment. Check the amount and reference, then confirm again or contact the training office.']:a.payment_claimed_at?['wait','Awaiting confirmation','Your payment notice was sent. Our team is verifying it. This page updates when you refresh.']:['wait','Awaiting payment','Transfer '+naira(a.total_ngn)+' to the account on the Payment step, then confirm below.'];
+ if(paid)b=['ok','Payment confirmed','Confirmed on '+new Date(a.paid_at).toLocaleString()+'.'];
+ const ev=[];(ap.data||[]).forEach(x=>{ev.push([x.created_at,'Application started',naira(x.total_ngn)+' - ref '+x.pay_reference+(x.status==='expired'?' (cancelled or expired)':'')]);if(x.payment_claimed_at)ev.push([x.payment_claimed_at,'Payment notice sent','Sent to our team for confirmation']);if(x.paid_at)ev.push([x.paid_at,'Payment confirmed',naira(x.total_ngn)])});
+ (py.data||[]).forEach(p=>ev.push([p.paid_at,'Payment received',naira(p.paid_ngn)+' - ref '+p.reference]));ev.sort((x,y)=>new Date(y[0])-new Date(x[0]));
+ view.innerHTML=`<h2>Payment Status</h2><div class="stat ${b[0]}"><b>${b[1]}</b><span>${b[2]}</span></div>${a?`<div class="kv"><div><span>Amount due</span>${naira(a.total_ngn)}</div><div><span>Reference</span>${esc(a.pay_reference)}</div>${!paid&&a.pay_account?`<div><span>Pay into</span>${esc(a.pay_bank)} ${esc(a.pay_account)}</div>`:''}</div>`:''}
+ <div class="acts">${a&&!paid?'<button class="btn2" id="rf">Refresh status</button><button id="cf">I have paid, confirm payment</button>':''}${paid?'<button id="rc">View &amp; print receipt</button>':''}</div>
+ <h3 style="margin-top:22px">Transaction history</h3>${ev.length?`<ul class="hist">${ev.map(e=>`<li><b>${e[1]}</b><span>${esc(e[2])}</span><small>${new Date(e[0]).toLocaleString()}</small></li>`).join('')}</ul>`:'<p class="sub">No transactions yet.</p>'}`;
+ if($('#rf'))$('#rf').onclick=async()=>{await refreshApp();if(S.app&&S.app.status!=='pending_payment')return route();statusView()};
+ if($('#cf'))$('#cf').onclick=async e=>{busy(e.target,'Sending...');const r=await call('claim-payment',{applicationId:a.id});idle(e.target);if(!r.ok)return note(esc(r.error||'Could not send your payment notice.'));statusView()};
+ if($('#rc'))$('#rc').onclick=receiptView}
+async function receiptView(){view=$('#content');markNav('ps');const a=S.app;if(!a||a.status==='pending_payment')return statusView();
+ const [ac,cs,py]=await Promise.all([sb.from('application_courses').select('course_code,fee_ngn').eq('application_id',a.id),sb.from('courses').select('code,name,category'),sb.from('payments').select('*').eq('application_id',a.id)]);
+ const nm=Object.fromEntries((cs.data||[]).map(c=>[c.code,c.name+' ('+c.category+')'])),p=(py.data||[])[0],name=S.profile?.full_name||S.user.email;
+ view.innerHTML=`<div id="rcpt"><div class="rh"><b>AH Consult CAD Training Programs</b><span>Payment Receipt</span></div><div class="kv"><div><span>Received from</span>${esc(name)}</div>${a.student_id?`<div><span>Student ID</span>${esc(a.student_id)}</div>`:''}<div><span>Reference</span>${esc(p?.reference||a.pay_reference)}</div><div><span>Date</span>${new Date(a.paid_at).toLocaleString()}</div><div><span>Method</span>Bank transfer (${p?.raw_event?.source==='sheet'?'verified by AH Consult':'confirmed automatically'})</div><div><span>Programme</span>${esc(a.package_code?'Full Package':'Per course')}</div>${(ac.data||[]).map(x=>`<div>${esc(nm[x.course_code]||x.course_code)}<b>${a.package_code?'Included':naira(x.fee_ngn)}</b></div>`).join('')}</div><div class="total"><span>Amount paid</span><span>${naira(p?.paid_ngn??a.total_ngn)}</span></div><p class="sub" style="margin-top:12px">This receipt confirms that the payment above was received and verified by AH Consult.</p></div>
+ <div class="acts noprint"><button onclick="window.print()">Print receipt</button><button class="btn2" id="bk2">Back to payment status</button></div>`;$('#bk2').onclick=statusView}
 
 function route(){note('');const a=S.app;if(!a)return pickView();
- if(a.status==='pending_payment')return payView();if(a.status==='paid')return formView();
+ if(a.status==='pending_payment')return payView();if(a.status==='paid'){if(!localStorage.getItem('ahct_paid_seen_'+a.id)){location.href='payment-success.html?ref='+encodeURIComponent(a.pay_reference);return}return formView()}
  if(a.status==='expired'||a.status==='rejected'){S.app=null;return pickView()}return doneView()}
 wire();
 boot().catch(function(e){fatal(e.message)});
